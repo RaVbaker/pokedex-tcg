@@ -291,7 +291,7 @@ dialog.sheet::backdrop { background: rgb(0 0 0 / .5); }
 .btn.file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 
 .card-view { display: grid; gap: 12px; }
-.card-view .big { width: min(100%, 300px); margin: 0 auto; aspect-ratio: 63 / 88; border-radius: 12px; background: var(--surface-2); display: block; object-fit: contain; }
+.card-view .big { width: min(100%, 260px); margin: 0 auto; aspect-ratio: 63 / 88; border-radius: 12px; background: var(--surface-2); display: block; object-fit: contain; }
 .card-view h2 { margin: 0; font-size: 18px; }
 .card-view .meta { color: var(--muted); font-size: 14px; }
 .card-view .add-row { display: flex; gap: 8px; }
@@ -454,3 +454,24 @@ body.album-mode .filter-btn, body.album-mode #filters { display: none !important
 .scan-form label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--muted); font-weight: 600; }
 .scan-form input { min-height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); padding: 4px 10px; font-size: 16px; color: var(--text); }
 .scan-form .btn { justify-self: start; }
+
+/* ===== Ceny (PokéWallet) ===== */
+.key-row { display: flex; gap: 6px; }
+.key-row input { flex: 1; min-width: 0; min-height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); padding: 6px 10px; font-size: 16px; color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.price-box { border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: var(--surface-2); }
+.price-box:empty { display: none; }
+.pw-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.pw-head .btn { margin-left: auto; }
+.pw-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 6px 0; font-variant-numeric: tabular-nums; }
+.pw-table caption { text-align: left; font-weight: 700; padding-bottom: 2px; }
+.pw-table th { text-align: left; color: var(--muted); font-weight: 600; font-size: 11px; padding: 2px 4px; }
+.pw-table td { padding: 3px 4px; border-top: 1px solid var(--line); }
+.pw-table td:first-child { text-transform: capitalize; }
+.pw-attr { display: inline-block; font-size: 11px; color: var(--muted); margin-top: 4px; }
+.pw-match { margin: 4px 0 0; }
+.pw-err { color: var(--danger); margin: 6px 0 0; }
+.price-tag {
+  display: inline-block; font-size: 11px; font-weight: 700; color: #1d5a35; background: #dff3e6;
+  border-radius: 6px; padding: 0 5px; vertical-align: middle; font-variant-numeric: tabular-nums;
+}
+.scard .price-tag { position: absolute; right: 4px; bottom: 4px; z-index: 2; }

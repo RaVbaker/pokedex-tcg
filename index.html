@@ -208,6 +208,32 @@
       </section>
 
       <section class="set-group">
+        <h3 data-i18n="pwSec">Ceny kart (PokéWallet)</h3>
+        <p class="muted small" id="pwHint"></p>
+        <label class="row"><span data-i18n="pwKey">Klucz API</span>
+          <span class="key-row">
+            <input id="pwKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="pk_live_…">
+            <button class="btn ghost small" id="pwShow" type="button" data-i18n-aria="pwShowKey">👁</button>
+          </span>
+        </label>
+        <div class="btn-row">
+          <button class="btn small" id="pwSave" data-i18n="pwSaveTest">Zapisz i sprawdź</button>
+          <button class="btn ghost small" id="pwClear" data-i18n="pwRemove">Usuń klucz</button>
+        </div>
+        <label class="row"><span data-i18n="pwSource">Główne źródło cen</span>
+          <select id="pwSrc">
+            <option value="cm">Cardmarket (EUR)</option>
+            <option value="tcg">TCGplayer (USD)</option>
+          </select>
+        </label>
+        <div class="btn-row">
+          <button class="btn small" id="pwValue" data-i18n="pwValueBtn">Wyceń kolekcję</button>
+          <button class="btn ghost small" id="pwCacheClear" data-i18n="pwCacheClear">Wyczyść zapisane ceny</button>
+        </div>
+        <p class="muted small" id="pwStatus" role="status"></p>
+      </section>
+
+      <section class="set-group">
         <h3 data-i18n="sourcesSec">Źródła danych</h3>
         <p class="muted small" id="sourcesText"></p>
       </section>
@@ -219,5 +245,6 @@
   <script src="app.js"></script>
   <script src="sets.js"></script>
   <script src="scanner.js"></script>
+  <script src="prices.js"></script>
 </body>
 </html>

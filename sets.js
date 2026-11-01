@@ -65,6 +65,14 @@ function renderSets(grid) {
   grid.innerHTML = rows.join('');
 }
 
+// wartość posiadanych kart z zestawu (tylko z zapisanych cen)
+function setValueLine(set) {
+  const ids = new Set((S.cardsBySet.get(set.id) || []).map(c => c.id));
+  const copies = allOwnedCopies().filter(c => ids.has(c.id));
+  const { sum, priced, cur } = valueOfCopies(copies);
+  return priced ? `<div class="muted small">${t('pwOwnedValue', fmtMoney(sum, cur), priced)}</div>` : '';
+}
+
 // ===== Widok jednego zestawu =====
 function openSet(id, push = true) {
   const set = S.sets.find(s => s.id === id);
@@ -105,6 +113,7 @@ function renderSetView() {
         <div class="muted">${esc(set.series)} · ${esc(set.code || set.id)} · ${esc(set.date || '')}</div>
         <div class="set-bar big"><span style="width:${pct}%"></span></div>
         <div class="set-hero-count"><b>${pr.baseHave}/${pr.base}</b> (${pct}%)${pr.secret ? ` · ${t('secret', pr.secretHave, pr.secret)}` : ''}</div>
+        ${setValueLine(set)}
       </div>
     </div>
     <div class="summary-chips">${chip('all', t('showAll'), cards.length)}${chip('missing', t('showMissing'), cards.length - pr.allHave)}${chip('owned', t('showOwned'), pr.allHave)}</div>
@@ -114,7 +123,7 @@ function renderSetView() {
       return `<button class="scard${n ? ' have' : ''}" data-card="${esc(c.id)}" aria-label="${esc(c.name)} ${esc(c.num)}">
         <span class="scard-fb"><b>${esc(c.num)}</b><span>${esc(c.name)}</span></span>
         <img loading="lazy" decoding="async" alt="" src="${esc(c.img)}" onerror="this.remove()">
-        <span class="scard-no${secret ? ' secret' : ''}">${esc(c.num)}</span>
+        <span class="scard-no${secret ? ' secret' : ''}">${esc(c.num)}</span>${priceTag(c.id, null)}
         ${n ? `<span class="scard-check">${n > 1 ? n : '✓'}</span>` : ''}
       </button>`;
     }).join('')}</div>`;

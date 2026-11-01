@@ -10,6 +10,7 @@ Prosta strona (PWA) w stylu National Pokédex do zbierania kart Pokémon TCG i u
 - **Szczegóły stworka** — duża karta z artworkiem; **swipe w lewo/prawo** (albo strzałki ‹ › / klawiatura) zawsze przechodzi do poprzedniego/następnego numeru Pokédex, niezależnie od filtrów.
 - **Zestawy** — trzeci widok: wszystkie zestawy kart pogrupowane według serii, z paskiem kompletności (np. `87/165`, osobno karty sekretne). Filtr: wszystkie / rozpoczęte / ukończone. Po wejściu w zestaw — lista wszystkich kart w kolejności numerów (brakujące wyszarzone), tapnięcie dodaje lub usuwa egzemplarz. Liczą się też trenerzy i energie.
 - **Skaner kart** (ikona w nagłówku) — kamera z ramką w kształcie karty albo zdjęcie z galerii. OCR (Tesseract.js, działa lokalnie w przeglądarce) czyta nazwę i numer w zestawie (`025/165`, `TG05/TG30`, `SWSH123`) i pokazuje pasujące karty do potwierdzenia. Po dodaniu karty skaner wraca do kamery — można szybko wprowadzić cały stos. Nazwę i numer da się poprawić ręcznie.
+- **Ceny kart** z [PokéWallet API](https://pokewallet.io) — Cardmarket (EUR) i TCGplayer (USD) w oknie karty (warianty: normal, holo, reverse), cena przy „Moich kartach” i na kartach w widoku zestawu, wartość posiadanych kart z zestawu oraz **wycena całej kolekcji** (⚙︎ → Ceny kart; po 30 kart na kliknięcie, żeby nie wyczerpać limitu). Wymaga własnego klucza API (⚙︎ → Ceny kart → „Zapisz i sprawdź”); klucz jest trzymany tylko w localStorage przeglądarki, nie trafia do CSV. Ceny są zapamiętywane na 24 h. Dane: „Data by PokéWallet”.
 - **Licznik kart** — w nagłówku: ile stworków i ile kart masz; na kafelku żółta plakietka z liczbą, gdy masz więcej niż jedną kartę danego stworka.
 - **Język interfejsu**: polski lub angielski (⚙︎; domyślnie wg języka przeglądarki).
 - **Karty TCG** z bazy [pokemon-tcg-data](https://github.com/PokemonTCG/pokemon-tcg-data): ile kart ma stworek, w których seriach (chipy z licznikami), jakiego rodzaju (Basic, ex, V, VMAX, GX…), z numerem w zestawie, rzadkością i rokiem. Tapnięcie pokazuje dużą kartę.
@@ -61,6 +62,7 @@ styles.css            # wygląd (Pokédex, karty, ciemny tryb)
 app.js                # logika: dane, filtry, album, swipe, kolekcja, CSV, i18n
 sets.js               # widok Zestawy (kompletność)
 scanner.js            # skaner: kamera/zdjęcie + OCR + dopasowanie kart
+prices.js             # ceny z PokéWallet API (klucz, cache 24 h, wycena kolekcji)
 vendor/tesseract/     # Tesseract.js 7 + model OCR „eng” (lokalnie, offline; licencja Apache-2.0)
 sw.js                 # service worker (offline)
 manifest.webmanifest  # PWA

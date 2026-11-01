@@ -69,7 +69,7 @@ const I18N = {
     export: 'Eksport CSV', import: 'Import CSV', importMerge: 'Import dołącza do obecnych danych (odznacz, by zastąpić)',
     dataInfo: (p, c) => `Zapisane: ${p} ${plPlural(p, 'stworek', 'stworki', 'stworków')}, ${c} ${plPlural(c, 'karta', 'karty', 'kart')}.`,
     reset: 'Wyczyść całą kolekcję', sourcesSec: 'Źródła danych',
-    sources: (s, c, last) => `Stworki: <a href="https://github.com/PokeAPI/pokeapi" target="_blank" rel="noopener">PokeAPI</a>. Karty: <a href="https://github.com/PokemonTCG/pokemon-tcg-data" target="_blank" rel="noopener">pokemon-tcg-data</a> (${s} zestawów, ${nf(c)} kart Pokémon, ostatni: ${last}). Pokémon i nazwy są znakami towarowymi Nintendo / Game Freak / The Pokémon Company — to nieoficjalne narzędzie fanowskie.`,
+    sources: (s, c, last) => `Stworki: <a href="https://github.com/PokeAPI/pokeapi" target="_blank" rel="noopener">PokeAPI</a>. Karty: <a href="https://github.com/PokemonTCG/pokemon-tcg-data" target="_blank" rel="noopener">pokemon-tcg-data</a> (${s} zestawów, ${nf(c)} kart, ostatni: ${last}). Pokémon i nazwy są znakami towarowymi Nintendo / Game Freak / The Pokémon Company — to nieoficjalne narzędzie fanowskie.`,
     confirmRemoveCards: n => `Usunąć też ${n} ${plPlural(n, 'zapisaną kartę', 'zapisane karty', 'zapisanych kart')}?`,
     exported: 'Wyeksportowano CSV', importDone: (p, c) => `Zaimportowano: ${p} nowych stworków, ${c} kart`,
     importReplace: 'Import zastąpi całą obecną kolekcję. Kontynuować?', importError: 'Błąd importu: ',
@@ -88,6 +88,22 @@ const I18N = {
     scanNoCamera: 'Brak dostępu do kamery — wybierz zdjęcie karty.', scanName: 'Nazwa', scanNumber: 'Numer (np. 25/165)',
     scanSearch: 'Szukaj', scanAgain: 'Skanuj ponownie', scanNone: 'Nie rozpoznano karty. Popraw nazwę lub numer i wyszukaj.',
     scanCandidates: n => `Pasujące karty (${n})`, scanAllOf: n => `Wszystkie karty: ${n}`, scanError: 'Błąd OCR: ',
+    pwSec: 'Ceny kart (PokéWallet)',
+    pwHint: 'Ceny z Cardmarket (EUR) i TCGplayer (USD) przez <a href="https://pokewallet.io" target="_blank" rel="noopener">PokéWallet API</a>. Załóż konto, skopiuj klucz API (<code>pk_live_…</code>) i wklej poniżej. Klucz zostaje tylko w tej przeglądarce i nie trafia do eksportu CSV. Darmowy plan ma limit ok. 100 zapytań na godzinę — ceny są zapamiętywane na 24 h.',
+    pwKey: 'Klucz API', pwSaveTest: 'Zapisz i sprawdź', pwRemove: 'Usuń klucz', pwSource: 'Główne źródło cen',
+    pwValueBtn: 'Wyceń kolekcję', pwCacheClear: 'Wyczyść zapisane ceny', pwShowKey: 'Pokaż klucz',
+    pwNoKey: 'Brak klucza API PokéWallet (⚙︎ → Ceny kart).', pwSetKeyHint: 'Ceny: dodaj klucz API PokéWallet w ⚙︎ → Ceny kart.',
+    pwLoading: 'Pobieram ceny…', pwNotFound: 'Nie znaleziono tej karty w PokéWallet.', pwNoPrices: 'Brak cen dla tej karty.',
+    pwPrices: 'Ceny', pwUpdated: d => `aktualizacja: ${d}`, pwRefresh: 'Odśwież',
+    pwTesting: 'Sprawdzam klucz…', pwKeyOk: 'Klucz działa ✓', pwKeyRemoved: 'Usunięto klucz.',
+    pwQuota: (h, d) => `Pozostało zapytań: ${h}/h, ${d}/dzień.`,
+    pwErr401: 'Nieprawidłowy klucz API.', pwErr403: 'Niedostępne w Twoim planie PokéWallet: ',
+    pwErr429: 'Limit zapytań wyczerpany — spróbuj za jakiś czas.', pwNetwork: 'Brak połączenia z PokéWallet.',
+    pwValuing: (i, n) => `Wyceniam… ${i}/${n}`,
+    pwValue: (v, p, n, left) => `Wartość kolekcji: ${v} (wycenione ${p} z ${n} kart${left ? `, do wyceny jeszcze ${left} — kliknij ponownie` : ''}).`,
+    pwCacheCleared: 'Usunięto zapisane ceny.',
+    pwVariant: 'Wariant', pwMarket: 'Rynkowa', pwTrend: 'Trend', pwLow: 'Min', pwHigh: 'Maks', pwAvg30: 'Śr. 30 dni',
+    pwOwnedValue: (v, p) => `Wartość moich kart: ${v} (wycenione: ${p})`,
     variants: { Other: 'Inny' },
   },
   en: {
@@ -127,7 +143,7 @@ const I18N = {
     export: 'Export CSV', import: 'Import CSV', importMerge: 'Import adds to current data (uncheck to replace)',
     dataInfo: (p, c) => `Saved: ${p} Pokémon, ${c} ${enPlural(c, 'card', 'cards')}.`,
     reset: 'Clear entire collection', sourcesSec: 'Data sources',
-    sources: (s, c, last) => `Pokémon: <a href="https://github.com/PokeAPI/pokeapi" target="_blank" rel="noopener">PokeAPI</a>. Cards: <a href="https://github.com/PokemonTCG/pokemon-tcg-data" target="_blank" rel="noopener">pokemon-tcg-data</a> (${s} sets, ${nf(c)} Pokémon cards, latest: ${last}). Pokémon and character names are trademarks of Nintendo / Game Freak / The Pokémon Company — this is an unofficial fan tool.`,
+    sources: (s, c, last) => `Pokémon: <a href="https://github.com/PokeAPI/pokeapi" target="_blank" rel="noopener">PokeAPI</a>. Cards: <a href="https://github.com/PokemonTCG/pokemon-tcg-data" target="_blank" rel="noopener">pokemon-tcg-data</a> (${s} sets, ${nf(c)} cards, latest: ${last}). Pokémon and character names are trademarks of Nintendo / Game Freak / The Pokémon Company — this is an unofficial fan tool.`,
     confirmRemoveCards: n => `Also remove ${n} saved ${enPlural(n, 'card', 'cards')}?`,
     exported: 'CSV exported', importDone: (p, c) => `Imported: ${p} new Pokémon, ${c} cards`,
     importReplace: 'Import will replace your whole collection. Continue?', importError: 'Import error: ',
@@ -146,6 +162,22 @@ const I18N = {
     scanNoCamera: 'No camera access — pick a photo of the card.', scanName: 'Name', scanNumber: 'Number (e.g. 25/165)',
     scanSearch: 'Search', scanAgain: 'Scan again', scanNone: 'No card recognized. Fix the name or number and search.',
     scanCandidates: n => `Matching cards (${n})`, scanAllOf: n => `All cards: ${n}`, scanError: 'OCR error: ',
+    pwSec: 'Card prices (PokéWallet)',
+    pwHint: 'Cardmarket (EUR) and TCGplayer (USD) prices via the <a href="https://pokewallet.io" target="_blank" rel="noopener">PokéWallet API</a>. Create an account, copy your API key (<code>pk_live_…</code>) and paste it below. The key stays in this browser only and is not included in CSV export. The free plan allows about 100 requests per hour — prices are remembered for 24 h.',
+    pwKey: 'API key', pwSaveTest: 'Save & test', pwRemove: 'Remove key', pwSource: 'Main price source',
+    pwValueBtn: 'Value my collection', pwCacheClear: 'Clear saved prices', pwShowKey: 'Show key',
+    pwNoKey: 'No PokéWallet API key (⚙︎ → Card prices).', pwSetKeyHint: 'Prices: add a PokéWallet API key in ⚙︎ → Card prices.',
+    pwLoading: 'Loading prices…', pwNotFound: 'This card was not found in PokéWallet.', pwNoPrices: 'No prices for this card.',
+    pwPrices: 'Prices', pwUpdated: d => `updated: ${d}`, pwRefresh: 'Refresh',
+    pwTesting: 'Testing key…', pwKeyOk: 'Key works ✓', pwKeyRemoved: 'Key removed.',
+    pwQuota: (h, d) => `Requests left: ${h}/h, ${d}/day.`,
+    pwErr401: 'Invalid API key.', pwErr403: 'Not available on your PokéWallet plan: ',
+    pwErr429: 'Rate limit reached — try again later.', pwNetwork: 'Could not reach PokéWallet.',
+    pwValuing: (i, n) => `Pricing… ${i}/${n}`,
+    pwValue: (v, p, n, left) => `Collection value: ${v} (${p} of ${n} cards priced${left ? `, ${left} still to price — click again` : ''}).`,
+    pwCacheCleared: 'Saved prices cleared.',
+    pwVariant: 'Variant', pwMarket: 'Market', pwTrend: 'Trend', pwLow: 'Low', pwHigh: 'High', pwAvg30: '30-day avg',
+    pwOwnedValue: (v, p) => `My cards value: ${v} (${p} priced)`,
     variants: {},
   },
 };
@@ -164,7 +196,7 @@ const S = {
   store: { owned: {}, settings: {}, filters: {}, other: [] },
   albumQ: '', albumHit: -1, setsQ: '', cardsBySet: new Map(), ownedIdx: null,
 };
-const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '' };
+const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', priceSrc: 'cm' };
 
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -566,7 +598,7 @@ function ownedSectionHTML(pk) {
     const c = S.cardById.get(oc.id);
     return `<li class="crow">
       ${c ? `<img class="thumb" loading="lazy" src="${esc(c.img)}" onerror="this.style.visibility='hidden'" alt="" data-card="${esc(c.id)}">` : '<span class="thumb"></span>'}
-      <div class="info">${c ? `<b>${esc(c.set.name)}</b>${cardLine(c)}` : `<b>${esc(oc.id)}</b><span>${t('unknownCard')}</span>`}
+      <div class="info">${c ? `<b>${esc(c.set.name)} ${priceTag(c.id, oc.v)}</b>${cardLine(c)}` : `<b>${esc(oc.id)}</b><span>${t('unknownCard')}</span>`}
         <select data-variant="${i}" aria-label="${t('cardType')}">${variantOptions(oc.v)}</select>
       </div>
       <button class="act rm" data-remove="${i}" aria-label="${t('removeCard')}">✕</button>
@@ -636,6 +668,7 @@ function openCardDialog(cardId) {
         <div class="meta">${esc(c.sub.join(', ') || '—')} · ${t('released')}: ${esc(c.set.date || '?')} · ID: ${esc(c.id)}</div>
         ${have ? `<div class="meta" style="color:var(--ok);font-weight:700">${t('haveCopies', have)}</div>` : ''}
       </div>
+      <div class="price-box" id="priceBox" data-card="${esc(c.id)}"></div>
       <label class="muted small" for="variantSel">${t('variantLabel')}</label>
       <div class="add-row">
         <select id="variantSel">${variantOptions(guess)}</select>
@@ -645,6 +678,7 @@ function openCardDialog(cardId) {
     </div>`;
   const dlg = $('#cardDlg');
   if (!dlg.open) dlg.showModal();
+  renderPriceBox(c);
 }
 
 // ===== Nawigacja w szczegółach + swipe =====
@@ -1063,6 +1097,7 @@ function bindEvents() {
   $('#scanBtn').addEventListener('click', () => openScanner());
   bindSets();
   bindScanner();
+  bindPrices();
 
   // ustawienia
   const sd = $('#settingsDlg');
