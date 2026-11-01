@@ -310,3 +310,54 @@ dialog.sheet::backdrop { background: rgb(0 0 0 / .5); }
   .page { padding: 8px; }
   .page-grid { gap: 6px; }
 }
+
+/* ===== Widoki: Pokédex / Mój album ===== */
+.views {
+  display: flex; gap: 4px; margin-top: 10px; padding: 3px; border-radius: 12px;
+  background: rgb(0 0 0 / .22); width: fit-content;
+}
+.views button {
+  border: 0; border-radius: 9px; padding: 6px 14px; font-weight: 600; font-size: 14px;
+  background: transparent; color: #fff; opacity: .85;
+}
+.views button[aria-selected="true"] { background: #fff; color: var(--dex-red); opacity: 1; }
+body.album-mode .filter-btn, body.album-mode #filters { display: none !important; }
+
+/* Przycisk czyszczenia wyszukiwania */
+.clear-btn {
+  flex: none; border: 0; background: transparent; color: #9aa0a8; padding: 0;
+  width: 32px; height: 32px; margin-right: -6px; display: grid; place-items: center;
+}
+.clear-btn:active { color: #555; }
+
+/* Licznik posiadanych kart na kafelku */
+.cnt {
+  margin-left: auto; margin-right: 3px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  background: #ffd23f; color: #222; font-size: 11px; font-weight: 800; line-height: 18px; text-align: center;
+  box-shadow: 0 0 0 1.5px #fff;
+}
+
+/* Mój album: brakujące wyszarzone */
+.tile.missing { filter: grayscale(.9); opacity: .45; }
+.tile.missing:hover { opacity: .7; }
+
+/* Mój album: kafelek z obrazkiem posiadanej karty (nakładka na zwykły kafelek) */
+.tile .cardimg-img { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: cover; border-radius: 10px; background: #2a2f36; }
+.tile .cardimg-no { display: none; }
+.tile.cardimg .cardimg-no {
+  display: block; position: absolute; z-index: 2; left: 4px; bottom: 4px; background: rgb(0 0 0 / .65); color: #fff;
+  font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 6px; font-variant-numeric: tabular-nums;
+}
+.tile.cardimg .tile-top { position: absolute; z-index: 2; top: 7px; left: 7px; right: 7px; }
+.tile.cardimg .tile-no { visibility: hidden; }
+
+/* Skok do stworka w albumie */
+.tile.flash { animation: flash 1.4s ease; }
+@keyframes flash {
+  0%, 60% { box-shadow: 0 0 0 4px #ffd23f, 0 0 18px 4px #ffd23f; transform: scale(1.04); }
+  100% { box-shadow: 0 1px 3px rgb(0 0 0 / .25); transform: none; }
+}
+
+/* Sortowanie po typie: grupy */
+.group { background: var(--surface); border-radius: 18px; padding: 10px; box-shadow: var(--shadow); margin-bottom: 16px; }
+.type-head { background: var(--tc); color: #fff; padding: 2px 10px; border-radius: 8px; text-shadow: 0 1px 1px rgb(0 0 0 / .3); }
