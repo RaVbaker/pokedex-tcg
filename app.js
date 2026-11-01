@@ -77,6 +77,17 @@ const I18N = {
     resetConfirm: 'Na pewno usunąć całą kolekcję? Najpierw zrób eksport CSV, jeśli chcesz mieć kopię.',
     resetDone: 'Kolekcja wyczyszczona', added: n => `Dodano: ${n}`, removed: n => `Usunięto: ${n}`,
     cardAdded: 'Dodano kartę do kolekcji', variantSaved: 'Zapisano typ karty', saveFail: 'Nie udało się zapisać danych w przeglądarce',
+    viewSets: 'Zestawy', searchPhSets: 'Szukaj zestawu: nazwa, kod, seria',
+    setsStatus: (st, n, c) => `Rozpoczęte zestawy: ${st} z ${n} · ${nf(c)} ${plPlural(c, 'karta', 'karty', 'kart')}`,
+    setsAll: 'Wszystkie', setsStarted: 'Rozpoczęte', setsDone: 'Ukończone', setsNone: 'Brak zestawów.',
+    secret: (h, n) => `+ sekretne ${h}/${n}`, complete: 'Komplet!', setCards: 'Karty w zestawie',
+    showAll: 'Wszystkie', showMissing: 'Brakuje', showOwned: 'Mam', back: 'Wstecz',
+    removeOne: 'Usuń 1 egz.', cardRemoved: 'Usunięto kartę', addMore: 'Dodaj kolejny',
+    scan: 'Skanuj kartę', scanHint: 'Włóż kartę w ramkę. Unikaj odblasków.', scanCapture: 'Zrób zdjęcie',
+    scanPhoto: 'Zdjęcie', scanLoading: 'Ładowanie OCR (pierwszy raz ~10 MB)…', scanReading: 'Odczytuję tekst…',
+    scanNoCamera: 'Brak dostępu do kamery — wybierz zdjęcie karty.', scanName: 'Nazwa', scanNumber: 'Numer (np. 25/165)',
+    scanSearch: 'Szukaj', scanAgain: 'Skanuj ponownie', scanNone: 'Nie rozpoznano karty. Popraw nazwę lub numer i wyszukaj.',
+    scanCandidates: n => `Pasujące karty (${n})`, scanAllOf: n => `Wszystkie karty: ${n}`, scanError: 'Błąd OCR: ',
     variants: { Other: 'Inny' },
   },
   en: {
@@ -124,6 +135,17 @@ const I18N = {
     resetConfirm: 'Really delete the whole collection? Export a CSV first if you want a backup.',
     resetDone: 'Collection cleared', added: n => `Added: ${n}`, removed: n => `Removed: ${n}`,
     cardAdded: 'Card added to collection', variantSaved: 'Card type saved', saveFail: 'Could not save data in this browser',
+    viewSets: 'Sets', searchPhSets: 'Search set: name, code, series',
+    setsStatus: (st, n, c) => `Started sets: ${st} of ${n} · ${nf(c)} ${enPlural(c, 'card', 'cards')}`,
+    setsAll: 'All', setsStarted: 'Started', setsDone: 'Completed', setsNone: 'No sets.',
+    secret: (h, n) => `+ secret ${h}/${n}`, complete: 'Complete!', setCards: 'Cards in set',
+    showAll: 'All', showMissing: 'Missing', showOwned: 'Owned', back: 'Back',
+    removeOne: 'Remove 1 copy', cardRemoved: 'Card removed', addMore: 'Add another',
+    scan: 'Scan card', scanHint: 'Fit the card in the frame. Avoid glare.', scanCapture: 'Capture',
+    scanPhoto: 'Photo', scanLoading: 'Loading OCR (first time ~10 MB)…', scanReading: 'Reading text…',
+    scanNoCamera: 'No camera access — pick a photo of the card.', scanName: 'Name', scanNumber: 'Number (e.g. 25/165)',
+    scanSearch: 'Search', scanAgain: 'Scan again', scanNone: 'No card recognized. Fix the name or number and search.',
+    scanCandidates: n => `Matching cards (${n})`, scanAllOf: n => `All cards: ${n}`, scanError: 'OCR error: ',
     variants: {},
   },
 };
@@ -139,15 +161,15 @@ const S = {
   pokemon: [], byId: new Map(), maxId: 0,
   sets: [], cards: [], cardsByDex: new Map(), cardById: new Map(),
   filtered: [], cur: 0,
-  store: { owned: {}, settings: {}, filters: {} },
-  albumQ: '', albumHit: -1,
+  store: { owned: {}, settings: {}, filters: {}, other: [] },
+  albumQ: '', albumHit: -1, setsQ: '', cardsBySet: new Map(), ownedIdx: null,
 };
-const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '' };
+const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '' };
 
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[♀]/g, ' f').replace(/[♂]/g, ' m');
-const normNum = s => String(s).trim().toLowerCase().replace(/^0+(?=\d)/, '');
+const normNum = s => String(s).trim().toLowerCase().replace(/^([a-z]*)0+(?=\d)/, '$1');
 const pad = n => '#' + String(n).padStart(4, '0');
 const fmt1 = v => (v / 10).toLocaleString(LANG === 'pl' ? 'pl-PL' : 'en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
@@ -160,18 +182,29 @@ function loadStore() {
       S.store.owned = d.owned || {};
       S.store.settings = d.settings || {};
       S.store.filters = d.filters || {};
+      S.store.other = d.other || [];
       // zgodność wstecz: wariant "Inny" -> "Other"
       for (const o of Object.values(S.store.owned)) for (const c of o.cards || []) if (c.v === 'Inny') c.v = 'Other';
     }
   } catch (e) { console.warn('localStorage niedostępny', e); }
 }
 function saveStore() {
+  S.ownedIdx = null;
   try { localStorage.setItem(LS_KEY, JSON.stringify(S.store)); }
   catch (e) { toast(t('saveFail')); }
 }
 const setting = k => (k in S.store.settings ? S.store.settings[k] : defaults[k]);
 const ownedCards = id => S.store.owned[id]?.cards || [];
-const totalOwnedCards = () => Object.values(S.store.owned).reduce((s, o) => s + o.cards.length, 0);
+const totalOwnedCards = () => Object.values(S.store.owned).reduce((s, o) => s + o.cards.length, 0) + S.store.other.length;
+// liczba posiadanych egzemplarzy każdej karty (id -> n), także trenerów/energii
+function ownedIndex() {
+  if (S.ownedIdx) return S.ownedIdx;
+  const m = new Map();
+  const add = c => m.set(c.id, (m.get(c.id) || 0) + 1);
+  for (const o of Object.values(S.store.owned)) o.cards.forEach(add);
+  S.store.other.forEach(add);
+  return (S.ownedIdx = m);
+}
 
 // ===== Dane =====
 async function loadData() {
@@ -183,7 +216,7 @@ async function loadData() {
   S.pokemon.forEach(pk => S.byId.set(pk.id, pk));
   S.maxId = Math.max(...S.pokemon.map(pk => pk.id));
 
-  S.sets = c.sets.map(([id, name, series, total, date, code], i) => ({ i, id, name, series, total, date, code }));
+  S.sets = c.sets.map(([id, name, series, total, date, code, symbol, logo], i) => ({ i, id, name, series, total, date, code, symbol, logo }));
   S.cards = c.cards.map(r => {
     const set = S.sets[r[0]];
     const num = r[1];
@@ -191,14 +224,17 @@ async function loadData() {
       set, num, name: r[2],
       rarity: c.rarities[r[3]] || '',
       sub: r[4].map(i => c.subtypes[i]),
-      dex: Array.isArray(r[5]) ? r[5] : [r[5]],
-      id: r[6] || `${set.id}-${num}`,
-      img: r[7] || `https://images.pokemontcg.io/${set.id}/${num}.png`,
+      dex: Array.isArray(r[5]) ? r[5] : (r[5] ? [r[5]] : []),
+      sup: c.supertypes ? c.supertypes[r[6]] : 'Pokémon',
+      id: r[7] || `${set.id}-${num}`,
+      img: r[8] || `https://images.pokemontcg.io/${set.id}/${num}.png`,
       nn: normNum(num),
     };
   });
   for (const card of S.cards) {
     S.cardById.set(card.id, card);
+    if (!S.cardsBySet.has(card.set.id)) S.cardsBySet.set(card.set.id, []);
+    S.cardsBySet.get(card.set.id).push(card);
     for (const d of card.dex) {
       if (!S.cardsByDex.has(d)) S.cardsByDex.set(d, []);
       S.cardsByDex.get(d).push(card);
@@ -347,17 +383,19 @@ function renderGrid() {
   const grid = $('#grid');
   const total = S.pokemon.length;
   const album = isAlbum();
+  const view = setting('view');
   renderProgress();
-  document.body.classList.toggle('album-mode', album);
-  $('#viewDex').setAttribute('aria-selected', String(!album));
-  $('#viewAlbum').setAttribute('aria-selected', String(album));
-  $('#q').placeholder = album ? t('searchPhAlbum') : t('searchPh');
-  const qv = album ? S.albumQ : (F().q || '');
+  document.body.classList.toggle('album-mode', view !== 'dex');
+  document.querySelectorAll('.views [data-view]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === view)));
+  $('#q').placeholder = view === 'sets' ? t('searchPhSets') : album ? t('searchPhAlbum') : t('searchPh');
+  const qv = view === 'sets' ? S.setsQ : album ? S.albumQ : (F().q || '');
   if ($('#q').value !== qv) $('#q').value = qv;
   $('#qClear').hidden = !$('#q').value;
   const fc = activeFilterCount();
   $('#filterCount').hidden = !fc;
   $('#filterCount').textContent = fc;
+
+  if (view === 'sets') { renderSets(grid); return; }
 
   if (album) {
     // Mój album: wszystkie strony, brakujące lekko wyszarzone
@@ -428,12 +466,29 @@ function setOwned(id, on) {
   return true;
 }
 function addCard(dex, cardId, variant) {
+  if (!dex) { S.store.other.push({ id: cardId, v: variant || 'Normal', t: Date.now() }); saveStore(); return; }
   setOwned(dex, true);
   S.store.owned[dex].cards.push({ id: cardId, v: variant || 'Normal' });
   saveStore();
 }
 function ownedCountOf(dex, cardId) {
-  return ownedCards(dex).filter(c => c.id === cardId).length;
+  return ownedIndex().get(cardId) || 0;
+}
+// odśwież widoki po dodaniu/usunięciu karty
+function afterCardChange() {
+  if (!$('#detail').hidden) renderDetail();
+  if (typeof renderSetView === 'function' && !$('#setView').hidden) renderSetView();
+  if ($('#detail').hidden) renderGrid(); else renderProgress();
+}
+// usuń jeden egzemplarz karty (ostatnio dodany), gdziekolwiek jest zapisany
+function removeOneCard(cardId) {
+  const lists = [...Object.values(S.store.owned).map(o => o.cards), S.store.other];
+  for (const list of lists) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i].id === cardId) { list.splice(i, 1); saveStore(); return true; }
+    }
+  }
+  return false;
 }
 
 // ===== Szczegóły (nawigacja zawsze po kolejnych numerach Pokédex) =====
@@ -567,7 +622,7 @@ function rerenderTcg() {
 function openCardDialog(cardId) {
   const c = S.cardById.get(cardId);
   if (!c) return;
-  const dex = c.dex.includes(S.cur) ? S.cur : c.dex[0];
+  const dex = c.dex.includes(S.cur) ? S.cur : (c.dex[0] || 0);
   const have = ownedCountOf(dex, c.id);
   const guess = /holo|rare/i.test(c.rarity) && !/common|uncommon/i.test(c.rarity) ? 'Holo' : 'Normal';
   $('#cardDlgBody').innerHTML = `
@@ -584,8 +639,9 @@ function openCardDialog(cardId) {
       <label class="muted small" for="variantSel">${t('variantLabel')}</label>
       <div class="add-row">
         <select id="variantSel">${variantOptions(guess)}</select>
-        <button class="btn ok" id="dlgAdd" data-dex="${dex}" data-card="${esc(c.id)}">${t('addBtn')}</button>
+        <button class="btn ok" id="dlgAdd" data-dex="${dex}" data-card="${esc(c.id)}">${have ? t('addMore') : t('addBtn')}</button>
       </div>
+      ${have ? `<button class="btn ghost" id="dlgRemove" data-card="${esc(c.id)}">${t('removeOne')}</button>` : ''}
     </div>`;
   const dlg = $('#cardDlg');
   if (!dlg.open) dlg.showModal();
@@ -672,6 +728,11 @@ function exportCSV() {
       lines.push([...base, '', '', '', '', '', '', '', '', '', page, slot, added].map(csvCell).join(','));
     }
   }
+  for (const oc of S.store.other) {
+    const c = S.cardById.get(oc.id);
+    const added = oc.t ? new Date(oc.t).toISOString().slice(0, 10) : '';
+    lines.push([0, c?.name || '', 1, oc.id, c?.set.id, c?.set.name, c?.set.series, c?.num, c?.set.total, c?.rarity, c?.name, oc.v, '', '', added].map(csvCell).join(','));
+  }
   const blob = new Blob(['﻿' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -711,8 +772,10 @@ function importCSV(text, merge) {
   if (iDex < 0) throw new Error(t('noDexCol'));
   const iOwned = col('owned'), iCard = col('card_id'), iSet = col('set_id'), iNum = col('card_number'), iVar = col('variant'), iAdded = col('added');
   const owned = merge ? structuredClone(S.store.owned) : {};
-  // przy łączeniu nie dubluj kart, które już są zapisane (liczone per karta+wariant)
+  const other = merge ? structuredClone(S.store.other) : [];
+  // przy łączeniu nie dubluj kart, które już są zapisane (liczone per karta+wariant; dex 0 = trener/energia)
   const existing = new Map();
+  if (merge) for (const c of other) existing.set(`0|${c.id}|${c.v}`, (existing.get(`0|${c.id}|${c.v}`) || 0) + 1);
   if (merge) for (const [d, o] of Object.entries(owned)) for (const c of o.cards) {
     const key = `${d}|${c.id}|${c.v}`;
     existing.set(key, (existing.get(key) || 0) + 1);
@@ -720,10 +783,29 @@ function importCSV(text, merge) {
   let nPk = 0, nCards = 0;
   const perKey = new Map();
   for (const r of rows.slice(1)) {
-    const dex = parseInt(r[iDex], 10);
-    if (!S.byId.has(dex)) continue;
+    const dex = parseInt(r[iDex], 10) || 0;
+    if (dex && !S.byId.has(dex)) continue;
     const ownedVal = iOwned >= 0 ? String(r[iOwned] ?? '').trim().toLowerCase() : '1';
     if (['0', 'false', 'nie', 'no', ''].includes(ownedVal)) continue;
+    if (!dex) {
+      // karta bez stworka (trener, energia) — tylko z identyfikatorem karty
+      let cid0 = iCard >= 0 ? (r[iCard] || '').trim() : '';
+      if (!cid0 && iSet >= 0 && iNum >= 0 && r[iSet] && r[iNum]) {
+        const sid = r[iSet].trim(), nn = normNum(r[iNum].split('/')[0]);
+        const found = (S.cardsBySet.get(sid) || []).find(c => c.nn === nn);
+        cid0 = found ? found.id : '';
+      }
+      if (!cid0) continue;
+      const v0 = (iVar >= 0 && r[iVar] ? r[iVar].trim() : '') || 'Normal';
+      const key0 = `0|${cid0}|${v0}`;
+      const k0 = perKey.get(key0) || 0;
+      perKey.set(key0, k0 + 1);
+      if (k0 < (existing.get(key0) || 0)) continue;
+      const tm0 = iAdded >= 0 && r[iAdded] ? Date.parse(r[iAdded]) : NaN;
+      other.push({ id: cid0, v: v0, t: isNaN(tm0) ? Date.now() : tm0 });
+      nCards++;
+      continue;
+    }
     if (!owned[dex]) {
       const tm = iAdded >= 0 && r[iAdded] ? Date.parse(r[iAdded]) : NaN;
       owned[dex] = { t: isNaN(tm) ? Date.now() : tm, cards: [] };
@@ -746,6 +828,7 @@ function importCSV(text, merge) {
     nCards++;
   }
   S.store.owned = owned;
+  S.store.other = other;
   saveStore();
   return { nPk, nCards };
 }
@@ -821,7 +904,8 @@ function bindEvents() {
     $('#qClear').hidden = !q.value;
     clearTimeout(qTimer);
     qTimer = setTimeout(() => {
-      if (isAlbum()) { S.albumQ = q.value; albumJump(q.value); }
+      if (setting('view') === 'sets') { S.setsQ = q.value; renderGrid(); }
+      else if (isAlbum()) { S.albumQ = q.value; albumJump(q.value); }
       else setF('q', q.value);
     }, 200);
   });
@@ -835,7 +919,8 @@ function bindEvents() {
     clearTimeout(qTimer);
     q.value = '';
     $('#qClear').hidden = true;
-    if (isAlbum()) { S.albumQ = ''; S.albumHit = -1; }
+    if (setting('view') === 'sets') { S.setsQ = ''; renderGrid(); }
+    else if (isAlbum()) { S.albumQ = ''; S.albumHit = -1; }
     else setF('q', '');
     q.focus();
   });
@@ -892,6 +977,10 @@ function bindEvents() {
       }
       return;
     }
+    const setRow = e.target.closest('[data-set]');
+    if (setRow) { openSet(setRow.dataset.set); return; }
+    const showBtn = e.target.closest('[data-sets-show]');
+    if (showBtn) { S.store.settings.setsShow = showBtn.dataset.setsShow; saveStore(); renderGrid(); return; }
     const tile = e.target.closest('.tile[data-id]');
     if (tile) openDetail(+tile.dataset.id);
   });
@@ -911,7 +1000,10 @@ function bindEvents() {
     else if (e.key === 'Escape') closeDetail();
   });
   window.addEventListener('popstate', () => {
-    if (!$('#detail').hidden && !(history.state && history.state.dex)) closeDetail(true);
+    const st = history.state || {};
+    if (!$('#detail').hidden && !st.dex) closeDetail(true);
+    if (typeof closeSet === 'function' && !$('#setView').hidden && !st.set) closeSet(true);
+    if (typeof closeScanner === 'function' && !$('#scanner').hidden && !st.scan) closeScanner(true);
   });
   $('#dInner').addEventListener('click', e => {
     const pk = S.byId.get(S.cur);
@@ -954,10 +1046,23 @@ function bindEvents() {
     if (btn) {
       addCard(+btn.dataset.dex, btn.dataset.card, $('#variantSel').value);
       e.currentTarget.close();
-      if (!$('#detail').hidden) renderDetail();
+      afterCardChange();
       toast(t('cardAdded'));
+      if (typeof scannerAfterAdd === 'function') scannerAfterAdd();
+      return;
+    }
+    const rmb = e.target.closest('#dlgRemove');
+    if (rmb) {
+      removeOneCard(rmb.dataset.card);
+      e.currentTarget.close();
+      afterCardChange();
+      toast(t('cardRemoved'));
     }
   });
+
+  $('#scanBtn').addEventListener('click', () => openScanner());
+  bindSets();
+  bindScanner();
 
   // ustawienia
   const sd = $('#settingsDlg');
@@ -1000,7 +1105,7 @@ function bindEvents() {
   });
   $('#resetBtn').addEventListener('click', () => {
     if (!confirm(t('resetConfirm'))) return;
-    S.store.owned = {}; saveStore(); updateDataInfo(); renderGrid(); toast(t('resetDone'));
+    S.store.owned = {}; S.store.other = []; saveStore(); updateDataInfo(); renderGrid(); toast(t('resetDone'));
   });
 }
 
@@ -1028,4 +1133,4 @@ async function main() {
     navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW', err));
   }
 }
-main();
+document.addEventListener("DOMContentLoaded", main);

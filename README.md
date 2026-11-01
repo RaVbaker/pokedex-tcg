@@ -8,6 +8,8 @@ Prosta strona (PWA) w stylu National Pokédex do zbierania kart Pokémon TCG i u
 - **Strony albumu** — siatka podzielona na strony (4/9/12/16 kieszonek, ustawiane w ⚙︎), z licznikiem „mam X/9” na każdej stronie. Przy filtrze „Mam/Brakuje” puste kieszonki pokazują się jako przerywane ramki.
 - **Mój album** — drugi widok: wszystkie strony albumu po kolei, stworki których nie masz są wyszarzone, a tam gdzie masz konkretną kartę, widać jej obrazek. Wyszukiwarka w tym widoku przewija do stworka (Enter = następne trafienie).
 - **Szczegóły stworka** — duża karta z artworkiem; **swipe w lewo/prawo** (albo strzałki ‹ › / klawiatura) zawsze przechodzi do poprzedniego/następnego numeru Pokédex, niezależnie od filtrów.
+- **Zestawy** — trzeci widok: wszystkie zestawy kart pogrupowane według serii, z paskiem kompletności (np. `87/165`, osobno karty sekretne). Filtr: wszystkie / rozpoczęte / ukończone. Po wejściu w zestaw — lista wszystkich kart w kolejności numerów (brakujące wyszarzone), tapnięcie dodaje lub usuwa egzemplarz. Liczą się też trenerzy i energie.
+- **Skaner kart** (ikona w nagłówku) — kamera z ramką w kształcie karty albo zdjęcie z galerii. OCR (Tesseract.js, działa lokalnie w przeglądarce) czyta nazwę i numer w zestawie (`025/165`, `TG05/TG30`, `SWSH123`) i pokazuje pasujące karty do potwierdzenia. Po dodaniu karty skaner wraca do kamery — można szybko wprowadzić cały stos. Nazwę i numer da się poprawić ręcznie.
 - **Licznik kart** — w nagłówku: ile stworków i ile kart masz; na kafelku żółta plakietka z liczbą, gdy masz więcej niż jedną kartę danego stworka.
 - **Język interfejsu**: polski lub angielski (⚙︎; domyślnie wg języka przeglądarki).
 - **Karty TCG** z bazy [pokemon-tcg-data](https://github.com/PokemonTCG/pokemon-tcg-data): ile kart ma stworek, w których seriach (chipy z licznikami), jakiego rodzaju (Basic, ex, V, VMAX, GX…), z numerem w zestawie, rzadkością i rokiem. Tapnięcie pokazuje dużą kartę.
@@ -38,7 +40,7 @@ Settings → Pages → Source: *Deploy from a branch* → `main` / `/ (root)`. P
 | Plik | Źródło | Zawartość |
 |---|---|---|
 | `data/pokemon.json` | [PokeAPI](https://github.com/PokeAPI/pokeapi) (CSV) | `[nr, nazwa, [typy], wzrost dm, waga hg, generacja]` |
-| `data/cards.json` | [pokemon-tcg-data](https://github.com/PokemonTCG/pokemon-tcg-data) | zestawy + karty Pokémon (bez trenerów i energii) |
+| `data/cards.json` | [pokemon-tcg-data](https://github.com/PokemonTCG/pokemon-tcg-data) | zestawy (z symbolami) + wszystkie karty: Pokémon, trenerzy, energie |
 
 Obrazki stworków ładują się z [PokeAPI/sprites](https://github.com/PokeAPI/sprites), obrazki kart z `images.pokemontcg.io` / `images.scrydex.com`.
 
@@ -56,7 +58,10 @@ Po zmianie plików podbij `VERSION` w `sw.js`, żeby telefony pobrały nową wer
 .nojekyll             # GitHub Pages bez Jekylla
 index.html            # układ strony
 styles.css            # wygląd (Pokédex, karty, ciemny tryb)
-app.js                # logika: dane, filtry, album, swipe, kolekcja, CSV
+app.js                # logika: dane, filtry, album, swipe, kolekcja, CSV, i18n
+sets.js               # widok Zestawy (kompletność)
+scanner.js            # skaner: kamera/zdjęcie + OCR + dopasowanie kart
+vendor/tesseract/     # Tesseract.js 7 + model OCR „eng” (lokalnie, offline; licencja Apache-2.0)
 sw.js                 # service worker (offline)
 manifest.webmanifest  # PWA
 icons/                # ikony (tools/make_icons.py)
