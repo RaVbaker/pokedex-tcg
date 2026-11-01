@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pokédex TCG</title>
+  <meta name="description" content="National Pokédex do układania kart Pokémon TCG w albumie i śledzenia kolekcji.">
+  <meta name="theme-color" content="#c8102e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Pokédex TCG">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar" id="topbar">
+    <div class="topbar-row">
+      <div class="lens" aria-hidden="true"><span></span></div>
+      <div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="brand">
+        <h1>Pokédex <span>TCG</span></h1>
+        <div class="progress" id="progress">
+          <div class="bar"><div class="fill" id="progressFill"></div></div>
+          <span id="progressText">…</span>
+        </div>
+      </div>
+      <button class="icon-btn" id="settingsBtn" aria-label="Ustawienia, eksport i import">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.7h-4l-.4 2.7c-.6.3-1.2.6-1.7 1l-2.5-1-2 3.5L4.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1l.4 2.7h4l.4-2.7c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5L19.4 13ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
+      </button>
+    </div>
+
+    <div class="search-row">
+      <label class="search">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3Zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z"/></svg>
+        <input id="q" type="search" placeholder="Nazwa (ang.), nr #25 lub zakres 1-151" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+      </label>
+      <button class="filter-btn" id="filterBtn" aria-expanded="false" aria-controls="filters">
+        Filtry <span class="badge" id="filterCount" hidden>0</span>
+      </button>
+    </div>
+
+    <div class="filters" id="filters" hidden>
+      <div class="chips" id="typeChips" role="group" aria-label="Typ"></div>
+      <div class="filter-grid">
+        <label>Posiadanie
+          <select id="fOwned">
+            <option value="">Wszystkie</option>
+            <option value="owned">Mam</option>
+            <option value="missing">Brakuje</option>
+          </select>
+        </label>
+        <label>Generacja
+          <select id="fGen"><option value="">Wszystkie</option></select>
+        </label>
+        <label class="wide">Kolekcja (zestaw kart)
+          <select id="fSet"><option value="">Wszystkie zestawy</option></select>
+        </label>
+        <label>Nr w kolekcji
+          <input id="fNum" type="text" inputmode="text" placeholder="np. 25 lub 25/165" autocomplete="off">
+        </label>
+        <label>Sortowanie
+          <select id="fSort">
+            <option value="dex">Nr Pokédex</option>
+            <option value="name">Nazwa A–Z</option>
+            <option value="set">Kolejność w zestawie</option>
+          </select>
+        </label>
+      </div>
+      <div class="filter-actions">
+        <button class="btn ghost" id="clearFilters">Wyczyść filtry</button>
+        <button class="btn" id="closeFilters">Gotowe</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <p class="status" id="status">Ładowanie danych…</p>
+    <div id="grid"></div>
+  </main>
+
+  <!-- Szczegóły stworka -->
+  <div class="detail" id="detail" hidden aria-modal="true" role="dialog" aria-labelledby="dName">
+    <div class="detail-bar">
+      <button class="icon-btn" id="dClose" aria-label="Zamknij">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4 6.4 5Z"/></svg>
+      </button>
+      <span class="detail-pos" id="dPos"></span>
+      <div class="detail-nav">
+        <button class="icon-btn" id="dPrev" aria-label="Poprzedni">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="m15.4 5-7 7 7 7 1.4-1.4-5.6-5.6 5.6-5.6L15.4 5Z"/></svg>
+        </button>
+        <button class="icon-btn" id="dNext" aria-label="Następny">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="m8.6 5 7 7-7 7-1.4-1.4 5.6-5.6-5.6-5.6L8.6 5Z"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="detail-scroll" id="dScroll">
+      <div class="detail-inner" id="dInner"></div>
+    </div>
+  </div>
+
+  <!-- Podgląd karty TCG + dodawanie do kolekcji -->
+  <dialog id="cardDlg" class="sheet">
+    <div class="sheet-body" id="cardDlgBody"></div>
+  </dialog>
+
+  <!-- Ustawienia -->
+  <dialog id="settingsDlg" class="sheet">
+    <div class="sheet-body">
+      <div class="sheet-head">
+        <h2>Ustawienia</h2>
+        <button class="icon-btn dark" data-close aria-label="Zamknij">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4 6.4 5Z"/></svg>
+        </button>
+      </div>
+
+      <section class="set-group">
+        <h3>Album</h3>
+        <label class="row">Kieszonek na stronie
+          <select id="sPocket">
+            <option value="4">4 (2×2)</option>
+            <option value="9">9 (3×3)</option>
+            <option value="12">12 (4×3)</option>
+            <option value="16">16 (4×4)</option>
+          </select>
+        </label>
+        <label class="row">Pierwsza strona zaczyna się od pozycji
+          <input id="sOffset" type="number" min="1" max="16" value="1" inputmode="numeric">
+        </label>
+        <label class="row check"><input type="checkbox" id="sPages"> Podział na strony albumu</label>
+        <label class="row check"><input type="checkbox" id="sHd"> Duże obrazki w siatce (więcej danych)</label>
+      </section>
+
+      <section class="set-group">
+        <h3>Dane</h3>
+        <p class="muted">Kolekcja zapisuje się automatycznie w tej przeglądarce (localStorage). Eksportuj CSV, żeby mieć kopię lub przenieść dane na inne urządzenie.</p>
+        <div class="btn-row">
+          <button class="btn" id="exportBtn">Eksport CSV</button>
+          <label class="btn ghost file">Import CSV<input type="file" id="importFile" accept=".csv,text/csv,text/plain"></label>
+        </div>
+        <label class="row check"><input type="checkbox" id="importMerge" checked> Import dołącza do obecnych danych (odznacz, by zastąpić)</label>
+        <p class="muted small" id="dataInfo"></p>
+        <button class="btn danger" id="resetBtn">Wyczyść całą kolekcję</button>
+      </section>
+
+      <section class="set-group">
+        <h3>Źródła danych</h3>
+        <p class="muted small">Stworki: <a href="https://github.com/PokeAPI/pokeapi" target="_blank" rel="noopener">PokeAPI</a>. Karty: <a href="https://github.com/PokemonTCG/pokemon-tcg-data" target="_blank" rel="noopener">pokemon-tcg-data</a> (<span id="dataStats"></span>). Pokémon i nazwy są znakami towarowymi Nintendo / Game Freak / The Pokémon Company — to nieoficjalne narzędzie fanowskie.</p>
+      </section>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

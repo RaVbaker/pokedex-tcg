@@ -1,0 +1,17 @@
+{
+  "name": "Pokédex TCG",
+  "short_name": "Pokédex",
+  "description": "National Pokédex do układania kart Pokémon TCG w albumie i śledzenia kolekcji.",
+  "lang": "pl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#c8102e",
+  "theme_color": "#c8102e",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
