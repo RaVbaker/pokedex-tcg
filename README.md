@@ -28,7 +28,7 @@ python3 -m http.server 8000
 
 ## Publikacja (GitHub Pages)
 
-Settings → Pages → Source: *Deploy from a branch* → `main` / `/ (root)`. Plik `.nojekyll` wyłącza przetwarzanie Jekyllem — pliki idą 1:1.
+Settings → Pages → Source: **GitHub Actions**. Workflow `.github/workflows/pages.yml` publikuje stronę przy każdym pushu na `main` (można go też uruchomić ręcznie w zakładce Actions). Publikowane są tylko pliki strony (bez `tools/` i README).
 
 ## Dane
 
