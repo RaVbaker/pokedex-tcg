@@ -1,6 +1,6 @@
 /* Pokédex TCG — National Pokédex + karty Pokémon TCG
  * Dane: data/pokemon.json, data/cards.json (budowane przez tools/build_data.py)
- * Kolekcja: localStorage, eksport/import CSV.
+ * Kolekcja: localStorage, eksport/import CSV. Interfejs: PL / EN.
  */
 'use strict';
 
@@ -15,33 +15,141 @@ const TYPE_COLORS = {
   Psychic: '#F95587', Bug: '#A6B91A', Rock: '#B6A136', Ghost: '#735797', Dragon: '#6F35FC',
   Dark: '#705746', Steel: '#B7B7CE', Fairy: '#D685AD',
 };
+const TYPE_ORDER = Object.keys(TYPE_COLORS);
 const GENS = ['', 'I · Kanto', 'II · Johto', 'III · Hoenn', 'IV · Sinnoh', 'V · Unova', 'VI · Kalos', 'VII · Alola', 'VIII · Galar', 'IX · Paldea'];
-const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'];
-const VARIANTS = ['Normal', 'Holo', 'Reverse Holo', '1st Edition', 'Shadowless', 'Promo / Stamped', 'Inny'];
+const VARIANTS = ['Normal', 'Holo', 'Reverse Holo', '1st Edition', 'Shadowless', 'Promo / Stamped', 'Other'];
 const COLS = { 4: 2, 9: 3, 12: 4, 16: 4 };
 const CARD_PAGE = 60; // ile kart TCG pokazać naraz w szczegółach
 
+// ===== i18n =====
+const plPlural = (n, one, few, many) => {
+  const m10 = n % 10, m100 = n % 100;
+  if (n === 1) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+};
+const enPlural = (n, one, many) => (n === 1 ? one : many);
+const nf = n => n.toLocaleString(LANG === 'pl' ? 'pl-PL' : 'en-US');
+
+const I18N = {
+  pl: {
+    settings: 'Ustawienia', close: 'Zamknij', prev: 'Poprzedni', next: 'Następny', clear: 'Wyczyść',
+    viewDex: 'Pokédex', viewAlbum: 'Mój album',
+    searchPh: 'Nazwa (ang.), nr #25 lub zakres 1-151', searchPhAlbum: 'Skocz do: nazwa lub numer',
+    filters: 'Filtry', type: 'Typ', ownership: 'Posiadanie', all: 'Wszystkie', owned: 'Mam', missing: 'Brakuje',
+    generation: 'Generacja', setLabel: 'Kolekcja (zestaw kart)', allSets: 'Wszystkie zestawy',
+    numLabel: 'Nr w kolekcji', numPh: 'np. 25 lub 25/165', sort: 'Sortowanie',
+    sortDex: 'Nr Pokédex', sortName: 'Nazwa A–Z', sortType: 'Typ', sortSet: 'Kolejność w zestawie',
+    clearFilters: 'Wyczyść filtry', done: 'Gotowe', loading: 'Ładowanie danych…',
+    loadError: 'Nie udało się wczytać danych. Otwórz stronę przez serwer HTTP (nie file://).',
+    progress: (o, t, c) => `Mam ${o} / ${t} · ${nf(c)} ${plPlural(c, 'karta', 'karty', 'kart')}`,
+    statusAll: (n, c, s) => `${n} stworków · ${nf(c)} kart TCG w ${s} zestawach`,
+    statusFiltered: (n, o) => `Widoczne: ${n} · mam z nich ${o}`,
+    statusAlbum: (o, t, c) => `Mój album: ${o} z ${t} stworków · ${nf(c)} ${plPlural(c, 'karta', 'karty', 'kart')}`,
+    noMatch: 'Nic nie pasuje do filtrów.', notFound: 'Nie znaleziono',
+    page: 'Strona', tileCards: n => `${n} kart`, tilePos: (p, s) => `s.${p}·${s}`,
+    ownedAria: 'Mam', notOwnedAria: 'Nie mam', cardsOwnedAria: n => `${n} ${plPlural(n, 'karta', 'karty', 'kart')}`,
+    height: 'Wzrost', weight: 'Waga', album: 'Album', posAlbum: (p, s) => `s.${p} · ${s}`,
+    tcgCount: n => `${n} ${plPlural(n, 'karta', 'karty', 'kart')} TCG`,
+    setsCount: n => `${n} ${plPlural(n, 'zestaw', 'zestawy', 'zestawów')}`,
+    ownOn: '✓ Mam tego stworka', ownOff: 'Oznacz jako posiadany',
+    myCards: 'Moje karty', myCardsHint: 'wybierz z listy poniżej (+)',
+    myCardsEmpty: 'Masz tego stworka — możesz dopisać konkretną kartę: kolekcję i typ (np. Reverse Holo).',
+    unknownCard: 'nieznana karta', cardType: 'Typ karty', removeCard: 'Usuń kartę',
+    tcgTitle: 'Karty TCG', allSeries: 'Wszystkie serie', allKinds: 'Każdy rodzaj',
+    cardFilterPh: 'Szukaj: zestaw, kod, numer, rzadkość…', noCards: 'Brak kart dla tego filtra.',
+    more: n => `Pokaż więcej (${n})`, addCard: 'Dodaj kartę do kolekcji',
+    series: 'Seria', no: 'Nr', released: 'Wydano',
+    haveCopies: n => `Masz ${n} ${plPlural(n, 'egzemplarz', 'egzemplarze', 'egzemplarzy')}`,
+    variantLabel: 'Typ karty (wariant)', addBtn: 'Dodaj do kolekcji',
+    language: 'Język', binder: 'Album', pockets: 'Kieszonek na stronie', offset: 'Pierwsza strona zaczyna się od pozycji',
+    pagesToggle: 'Podział na strony albumu', cardImgToggle: '„Mój album”: pokazuj obrazki moich kart',
+    hdToggle: 'Duże obrazki w siatce (więcej danych)',
+    dataSec: 'Dane', dataHint: 'Kolekcja zapisuje się automatycznie w tej przeglądarce (localStorage). Eksportuj CSV, żeby mieć kopię lub przenieść dane na inne urządzenie.',
+    export: 'Eksport CSV', import: 'Import CSV', importMerge: 'Import dołącza do obecnych danych (odznacz, by zastąpić)',
+    dataInfo: (p, c) => `Zapisane: ${p} ${plPlural(p, 'stworek', 'stworki', 'stworków')}, ${c} ${plPlural(c, 'karta', 'karty', 'kart')}.`,
+    reset: 'Wyczyść całą kolekcję', sourcesSec: 'Źródła danych',
+    sources: (s, c, last) => `Stworki: <a href="https://github.com/PokeAPI/pokeapi" target="_blank" rel="noopener">PokeAPI</a>. Karty: <a href="https://github.com/PokemonTCG/pokemon-tcg-data" target="_blank" rel="noopener">pokemon-tcg-data</a> (${s} zestawów, ${nf(c)} kart Pokémon, ostatni: ${last}). Pokémon i nazwy są znakami towarowymi Nintendo / Game Freak / The Pokémon Company — to nieoficjalne narzędzie fanowskie.`,
+    confirmRemoveCards: n => `Usunąć też ${n} ${plPlural(n, 'zapisaną kartę', 'zapisane karty', 'zapisanych kart')}?`,
+    exported: 'Wyeksportowano CSV', importDone: (p, c) => `Zaimportowano: ${p} nowych stworków, ${c} kart`,
+    importReplace: 'Import zastąpi całą obecną kolekcję. Kontynuować?', importError: 'Błąd importu: ',
+    noDexCol: 'Brak kolumny "dex"', emptyFile: 'Pusty plik',
+    resetConfirm: 'Na pewno usunąć całą kolekcję? Najpierw zrób eksport CSV, jeśli chcesz mieć kopię.',
+    resetDone: 'Kolekcja wyczyszczona', added: n => `Dodano: ${n}`, removed: n => `Usunięto: ${n}`,
+    cardAdded: 'Dodano kartę do kolekcji', variantSaved: 'Zapisano typ karty', saveFail: 'Nie udało się zapisać danych w przeglądarce',
+    variants: { Other: 'Inny' },
+  },
+  en: {
+    settings: 'Settings', close: 'Close', prev: 'Previous', next: 'Next', clear: 'Clear',
+    viewDex: 'Pokédex', viewAlbum: 'My binder',
+    searchPh: 'Name, no. #25 or range 1-151', searchPhAlbum: 'Jump to: name or number',
+    filters: 'Filters', type: 'Type', ownership: 'Ownership', all: 'All', owned: 'Owned', missing: 'Missing',
+    generation: 'Generation', setLabel: 'Collection (card set)', allSets: 'All sets',
+    numLabel: 'No. in set', numPh: 'e.g. 25 or 25/165', sort: 'Sort',
+    sortDex: 'Pokédex no.', sortName: 'Name A–Z', sortType: 'Type', sortSet: 'Set order',
+    clearFilters: 'Clear filters', done: 'Done', loading: 'Loading data…',
+    loadError: 'Could not load data. Open the page through an HTTP server (not file://).',
+    progress: (o, t, c) => `Have ${o} / ${t} · ${nf(c)} ${enPlural(c, 'card', 'cards')}`,
+    statusAll: (n, c, s) => `${n} Pokémon · ${nf(c)} TCG cards in ${s} sets`,
+    statusFiltered: (n, o) => `Showing ${n} · ${o} owned`,
+    statusAlbum: (o, t, c) => `My binder: ${o} of ${t} Pokémon · ${nf(c)} ${enPlural(c, 'card', 'cards')}`,
+    noMatch: 'Nothing matches the filters.', notFound: 'Not found',
+    page: 'Page', tileCards: n => `${n} cards`, tilePos: (p, s) => `p.${p}·${s}`,
+    ownedAria: 'Owned', notOwnedAria: 'Not owned', cardsOwnedAria: n => `${n} ${enPlural(n, 'card', 'cards')}`,
+    height: 'Height', weight: 'Weight', album: 'Binder', posAlbum: (p, s) => `p.${p} · ${s}`,
+    tcgCount: n => `${n} TCG ${enPlural(n, 'card', 'cards')}`,
+    setsCount: n => `${n} ${enPlural(n, 'set', 'sets')}`,
+    ownOn: '✓ I have this one', ownOff: 'Mark as owned',
+    myCards: 'My cards', myCardsHint: 'pick from the list below (+)',
+    myCardsEmpty: 'You own this Pokémon — you can add the exact card: set and type (e.g. Reverse Holo).',
+    unknownCard: 'unknown card', cardType: 'Card type', removeCard: 'Remove card',
+    tcgTitle: 'TCG cards', allSeries: 'All series', allKinds: 'All kinds',
+    cardFilterPh: 'Search: set, code, number, rarity…', noCards: 'No cards for this filter.',
+    more: n => `Show more (${n})`, addCard: 'Add card to collection',
+    series: 'Series', no: 'No.', released: 'Released',
+    haveCopies: n => `You have ${n} ${enPlural(n, 'copy', 'copies')}`,
+    variantLabel: 'Card type (variant)', addBtn: 'Add to collection',
+    language: 'Language', binder: 'Binder', pockets: 'Pockets per page', offset: 'First page starts at pocket',
+    pagesToggle: 'Split into binder pages', cardImgToggle: '“My binder”: show images of my cards',
+    hdToggle: 'Large images in grid (more data)',
+    dataSec: 'Data', dataHint: 'Your collection is saved automatically in this browser (localStorage). Export CSV to keep a backup or move it to another device.',
+    export: 'Export CSV', import: 'Import CSV', importMerge: 'Import adds to current data (uncheck to replace)',
+    dataInfo: (p, c) => `Saved: ${p} Pokémon, ${c} ${enPlural(c, 'card', 'cards')}.`,
+    reset: 'Clear entire collection', sourcesSec: 'Data sources',
+    sources: (s, c, last) => `Pokémon: <a href="https://github.com/PokeAPI/pokeapi" target="_blank" rel="noopener">PokeAPI</a>. Cards: <a href="https://github.com/PokemonTCG/pokemon-tcg-data" target="_blank" rel="noopener">pokemon-tcg-data</a> (${s} sets, ${nf(c)} Pokémon cards, latest: ${last}). Pokémon and character names are trademarks of Nintendo / Game Freak / The Pokémon Company — this is an unofficial fan tool.`,
+    confirmRemoveCards: n => `Also remove ${n} saved ${enPlural(n, 'card', 'cards')}?`,
+    exported: 'CSV exported', importDone: (p, c) => `Imported: ${p} new Pokémon, ${c} cards`,
+    importReplace: 'Import will replace your whole collection. Continue?', importError: 'Import error: ',
+    noDexCol: 'Missing "dex" column', emptyFile: 'Empty file',
+    resetConfirm: 'Really delete the whole collection? Export a CSV first if you want a backup.',
+    resetDone: 'Collection cleared', added: n => `Added: ${n}`, removed: n => `Removed: ${n}`,
+    cardAdded: 'Card added to collection', variantSaved: 'Card type saved', saveFail: 'Could not save data in this browser',
+    variants: {},
+  },
+};
+let LANG = 'pl';
+function t(key, ...args) {
+  const v = I18N[LANG][key] ?? I18N.pl[key];
+  return typeof v === 'function' ? v(...args) : (v ?? key);
+}
+const variantLabel = v => I18N[LANG].variants[v] || v;
+
 // ===== Stan =====
 const S = {
-  pokemon: [], byId: new Map(),
+  pokemon: [], byId: new Map(), maxId: 0,
   sets: [], cards: [], cardsByDex: new Map(), cardById: new Map(),
-  filtered: [], cur: -1,
+  filtered: [], cur: 0,
   store: { owned: {}, settings: {}, filters: {} },
+  albumQ: '', albumHit: -1,
 };
-const defaults = { pocket: 9, offset: 1, pages: true, hd: false };
+const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '' };
 
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[♀]/g, ' f').replace(/[♂]/g, ' m');
 const normNum = s => String(s).trim().toLowerCase().replace(/^0+(?=\d)/, '');
 const pad = n => '#' + String(n).padStart(4, '0');
-const fmt1 = v => (v / 10).toLocaleString('pl-PL', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const plural = (n, one, few, many) => {
-  const m10 = n % 10, m100 = n % 100;
-  if (n === 1) return one;
-  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
-  return many;
-};
+const fmt1 = v => (v / 10).toLocaleString(LANG === 'pl' ? 'pl-PL' : 'en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 // ===== Persystencja =====
 function loadStore() {
@@ -52,14 +160,18 @@ function loadStore() {
       S.store.owned = d.owned || {};
       S.store.settings = d.settings || {};
       S.store.filters = d.filters || {};
+      // zgodność wstecz: wariant "Inny" -> "Other"
+      for (const o of Object.values(S.store.owned)) for (const c of o.cards || []) if (c.v === 'Inny') c.v = 'Other';
     }
   } catch (e) { console.warn('localStorage niedostępny', e); }
 }
 function saveStore() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(S.store)); }
-  catch (e) { toast('Nie udało się zapisać danych w przeglądarce'); }
+  catch (e) { toast(t('saveFail')); }
 }
 const setting = k => (k in S.store.settings ? S.store.settings[k] : defaults[k]);
+const ownedCards = id => S.store.owned[id]?.cards || [];
+const totalOwnedCards = () => Object.values(S.store.owned).reduce((s, o) => s + o.cards.length, 0);
 
 // ===== Dane =====
 async function loadData() {
@@ -69,12 +181,13 @@ async function loadData() {
   ]);
   S.pokemon = p.map(([id, name, types, h, w, gen]) => ({ id, name, types, h, w, gen, key: norm(name) }));
   S.pokemon.forEach(pk => S.byId.set(pk.id, pk));
+  S.maxId = Math.max(...S.pokemon.map(pk => pk.id));
 
   S.sets = c.sets.map(([id, name, series, total, date, code], i) => ({ i, id, name, series, total, date, code }));
   S.cards = c.cards.map(r => {
     const set = S.sets[r[0]];
     const num = r[1];
-    const card = {
+    return {
       set, num, name: r[2],
       rarity: c.rarities[r[3]] || '',
       sub: r[4].map(i => c.subtypes[i]),
@@ -83,7 +196,6 @@ async function loadData() {
       img: r[7] || `https://images.pokemontcg.io/${set.id}/${num}.png`,
       nn: normNum(num),
     };
-    return card;
   });
   for (const card of S.cards) {
     S.cardById.set(card.id, card);
@@ -101,54 +213,67 @@ const numSort = (a, b) => {
 };
 
 // ===== Album =====
+const offset0 = () => Math.max(1, +setting('offset') || 1) - 1;
 function albumPos(id) {
   const P = +setting('pocket');
-  const pos = id - 1 + (Math.max(1, +setting('offset') || 1) - 1);
+  const pos = id - 1 + offset0();
   return { page: Math.floor(pos / P) + 1, slot: (pos % P) + 1 };
+}
+function pageStats(page) {
+  const P = +setting('pocket'), off = offset0();
+  let have = 0, slots = 0;
+  for (let s = 0; s < P; s++) {
+    const id = (page - 1) * P + s - off + 1;
+    if (!S.byId.has(id)) continue;
+    slots++;
+    if (S.store.owned[id]) have++;
+  }
+  return { have, slots };
 }
 
 // ===== Filtry =====
 const F = () => S.store.filters;
+const isAlbum = () => setting('view') === 'album';
 function activeFilterCount() {
   const f = F();
   return (f.types?.length || 0) + (f.owned ? 1 : 0) + (f.gen ? 1 : 0) + (f.set ? 1 : 0) + (f.num ? 1 : 0) + (f.sort && f.sort !== 'dex' ? 1 : 0);
 }
 function setCardsFor(pk) {
-  // karty tego stworka pasujące do filtra zestawu / numeru
   const f = F();
   if (!f.set && !f.num) return null;
   const n = f.num ? normNum(String(f.num).split('/')[0]) : '';
   return (S.cardsByDex.get(pk.id) || []).filter(c => (!f.set || c.set.id === f.set) && (!n || c.nn === n));
 }
-function applyFilters() {
-  const f = F();
-  const q = (f.q || '').trim();
-  let test = () => true;
+function queryTest(q) {
+  q = (q || '').trim();
   let m;
   if ((m = q.match(/^#?(\d+)\s*[-–]\s*#?(\d+)$/))) {
     const a = +m[1], b = +m[2];
-    test = pk => pk.id >= Math.min(a, b) && pk.id <= Math.max(a, b);
-  } else if ((m = q.match(/^#?(\d+)$/))) {
-    const n = +m[1];
-    test = pk => pk.id === n;
-  } else if (q) {
-    const k = norm(q);
-    test = pk => pk.key.includes(k);
+    return pk => pk.id >= Math.min(a, b) && pk.id <= Math.max(a, b);
   }
+  if ((m = q.match(/^#?(\d+)$/))) { const n = +m[1]; return pk => pk.id === n; }
+  if (q) { const k = norm(q); return pk => pk.key.includes(k); }
+  return () => true;
+}
+function applyFilters() {
+  const f = F();
+  const test = queryTest(f.q);
   const types = f.types || [];
   const owned = S.store.owned;
   let list = S.pokemon.filter(pk =>
     test(pk) &&
-    types.every(t => pk.types.includes(t)) &&
+    types.every(tp => pk.types.includes(tp)) &&
     (!f.gen || pk.gen === +f.gen) &&
     (f.owned !== 'owned' || owned[pk.id]) &&
     (f.owned !== 'missing' || !owned[pk.id])
   );
-  if (f.set || f.num) {
-    list = list.filter(pk => setCardsFor(pk).length);
-  }
+  if (f.set || f.num) list = list.filter(pk => setCardsFor(pk).length);
   const sort = f.sort || 'dex';
   if (sort === 'name') list = [...list].sort((a, b) => a.name.localeCompare(b.name, 'en'));
+  if (sort === 'type') {
+    const ti = tp => (tp ? TYPE_ORDER.indexOf(tp) : -1);
+    list = [...list].sort((a, b) => ti(a.types[0]) - ti(b.types[0]) || ti(a.types[1]) - ti(b.types[1]) || a.id - b.id);
+  }
   if (sort === 'set' && f.set) {
     const first = pk => setCardsFor(pk).sort(numSort)[0];
     list = [...list].sort((a, b) => numSort(first(a), first(b)));
@@ -162,72 +287,131 @@ function typeVars(types) {
   const c2 = TYPE_COLORS[types[1]] || c1;
   return `--c1:${c1};--c2:${c2}`;
 }
-function tileHTML(pk) {
+function checkBtn(pk, owned) {
+  return `<button class="tile-check" data-toggle="${pk.id}" aria-label="${owned ? t('ownedAria') : t('notOwnedAria')}: ${esc(pk.name)}" aria-pressed="${!!owned}">✓</button>`;
+}
+function countBadge(n) {
+  return n > 1 ? `<span class="cnt" aria-label="${esc(t('cardsOwnedAria', n))}">${n}</span>` : '';
+}
+function tileHTML(pk, album = false) {
   const owned = S.store.owned[pk.id];
+  const mine = ownedCards(pk.id);
+  const cls = `tile${owned ? ' owned' : ''}${album && !owned ? ' missing' : ''}`;
+  const aria = `aria-label="${esc(pk.name)} ${pad(pk.id)}"`;
+
+  // "Mój album": jeśli mam konkretną kartę — pokaż jej obrazek (gdy się nie załaduje, zostaje zwykły kafelek)
+  const card = album && owned && mine.length && setting('cardImg') ? S.cardById.get(mine[0].id) : null;
+  const overlay = card
+    ? `<img class="cardimg-img" loading="lazy" decoding="async" alt="" src="${esc(card.img)}" onerror="this.closest('.tile').classList.remove('cardimg');this.remove()"><span class="cardimg-no">${pad(pk.id)}</span>`
+    : '';
+
   const hd = setting('hd');
   const cards = S.cardsByDex.get(pk.id) || [];
-  const sc = setCardsFor(pk);
+  const sc = album ? null : setCardsFor(pk);
   const { page, slot } = albumPos(pk.id);
   const foot = sc && sc.length
     ? `<b>${esc(sc.slice(0, 2).map(c => c.num).join(', '))}${sc.length > 2 ? '…' : ''}</b><span>${esc(sc[0].set.code || '')}</span>`
-    : `<span>${cards.length} kart</span><span>s.${page}·${slot}</span>`;
-  return `<article class="tile${owned ? ' owned' : ''}" data-id="${pk.id}" style="${typeVars(pk.types)}" tabindex="0" aria-label="${esc(pk.name)} ${pad(pk.id)}">
+    : `<span>${t('tileCards', cards.length)}</span><span>${t('tilePos', page, slot)}</span>`;
+  return `<article class="${cls}${card ? ' cardimg' : ''}" data-id="${pk.id}" style="${typeVars(pk.types)}" tabindex="0" ${aria}>${overlay}
     <div class="tile-in">
-      <div class="tile-top"><span class="tile-no">${pad(pk.id)}</span><button class="tile-check" data-toggle="${pk.id}" aria-label="${owned ? 'Mam' : 'Nie mam'}: ${esc(pk.name)}" aria-pressed="${!!owned}">✓</button></div>
+      <div class="tile-top"><span class="tile-no">${pad(pk.id)}</span>${countBadge(mine.length)}${checkBtn(pk, owned)}</div>
       <div class="tile-img"><img loading="lazy" decoding="async" crossorigin="anonymous" alt="" src="${hd ? ART(pk.id) : SPRITE(pk.id)}"${hd ? ' class="hd"' : ''} onerror="this.onerror=null;this.className='hd';this.src='${hd ? SPRITE(pk.id) : ART(pk.id)}'"></div>
       <div class="tile-name">${esc(pk.name)}</div>
-      <div class="tile-types">${pk.types.map(t => `<i style="--tc:${TYPE_COLORS[t]}">${t}</i>`).join('')}</div>
+      <div class="tile-types">${pk.types.map(tp => `<i style="--tc:${TYPE_COLORS[tp]}">${tp}</i>`).join('')}</div>
       <div class="tile-meta">${fmt1(pk.h)} m · ${fmt1(pk.w)} kg</div>
       <div class="tile-foot">${foot}</div>
     </div>
   </article>`;
 }
-function renderGrid() {
-  applyFilters();
-  const grid = $('#grid');
-  const list = S.filtered;
+function pageHTML(page, cellFn) {
+  const P = +setting('pocket'), off = offset0();
+  const startPos = (page - 1) * P;
+  let cells = '';
+  for (let s = 0; s < P; s++) {
+    const id = startPos + s - off + 1;
+    const pk = S.byId.get(id);
+    cells += pk ? cellFn(pk) : `<div class="tile ghost" aria-hidden="true"></div>`;
+  }
+  const firstId = Math.max(1, startPos - off + 1), lastId = Math.min(S.maxId, startPos + P - off);
+  const { have, slots } = pageStats(page);
+  return `<section class="page" data-page="${page}"><div class="page-head"><b>${t('page')} ${page}</b><span>${pad(firstId)}–${pad(lastId)}</span><span class="pg-count${have === slots ? ' done' : ''}">${have}/${slots}</span></div>
+    <div class="page-grid" style="--cols:${COLS[P] || 3}">${cells}</div></section>`;
+}
+function renderProgress() {
   const ownedCount = Object.keys(S.store.owned).length;
   const total = S.pokemon.length;
   $('#progressFill').style.width = (ownedCount / total * 100).toFixed(1) + '%';
-  $('#progressText').textContent = `Mam ${ownedCount} / ${total}`;
+  $('#progressText').textContent = t('progress', ownedCount, total, totalOwnedCards());
+}
+function renderGrid() {
+  const grid = $('#grid');
+  const total = S.pokemon.length;
+  const album = isAlbum();
+  renderProgress();
+  document.body.classList.toggle('album-mode', album);
+  $('#viewDex').setAttribute('aria-selected', String(!album));
+  $('#viewAlbum').setAttribute('aria-selected', String(album));
+  $('#q').placeholder = album ? t('searchPhAlbum') : t('searchPh');
+  const qv = album ? S.albumQ : (F().q || '');
+  if ($('#q').value !== qv) $('#q').value = qv;
+  $('#qClear').hidden = !$('#q').value;
   const fc = activeFilterCount();
   $('#filterCount').hidden = !fc;
   $('#filterCount').textContent = fc;
 
-  const visOwned = list.filter(pk => S.store.owned[pk.id]).length;
-  $('#status').textContent = list.length === total
-    ? `${total} stworków · ${S.cards.length.toLocaleString('pl-PL')} kart TCG w ${S.sets.length} zestawach`
-    : `Widoczne: ${list.length} · mam z nich ${visOwned}`;
-
-  if (!list.length) { grid.innerHTML = '<p class="empty">Nic nie pasuje do filtrów.</p>'; return; }
-
-  const pagesMode = setting('pages') && (F().sort || 'dex') === 'dex';
-  if (!pagesMode) {
-    grid.innerHTML = `<div class="flat">${list.map(tileHTML).join('')}</div>`;
+  if (album) {
+    // Mój album: wszystkie strony, brakujące lekko wyszarzone
+    S.filtered = S.pokemon;
+    $('#status').textContent = t('statusAlbum', Object.keys(S.store.owned).length, total, totalOwnedCards());
+    const lastPage = albumPos(S.maxId).page;
+    const out = [];
+    for (let page = 1; page <= lastPage; page++) out.push(pageHTML(page, pk => tileHTML(pk, true)));
+    grid.innerHTML = `<div class="pages">${out.join('')}</div>`;
     return;
   }
-  // Grupowanie na strony albumu — puste miejsca pokazane jako "duchy"
-  const P = +setting('pocket');
-  const offset = Math.max(1, +setting('offset') || 1) - 1;
+
+  applyFilters();
+  const list = S.filtered;
+  const visOwned = list.filter(pk => S.store.owned[pk.id]).length;
+  $('#status').textContent = list.length === total ? t('statusAll', total, S.cards.length, S.sets.length) : t('statusFiltered', list.length, visOwned);
+  if (!list.length) { grid.innerHTML = `<p class="empty">${t('noMatch')}</p>`; return; }
+
+  const sort = F().sort || 'dex';
+  if (sort === 'type') {
+    // grupy wg głównego typu
+    const groups = new Map();
+    for (const pk of list) {
+      const tp = pk.types[0];
+      if (!groups.has(tp)) groups.set(tp, []);
+      groups.get(tp).push(pk);
+    }
+    grid.innerHTML = [...groups].map(([tp, pks]) => `<section class="group" style="--tc:${TYPE_COLORS[tp]}">
+      <div class="page-head"><b class="type-head">${tp}</b><span>${pks.length}</span><span class="pg-count">${pks.filter(pk => S.store.owned[pk.id]).length}/${pks.length}</span></div>
+      <div class="flat">${pks.map(pk => tileHTML(pk)).join('')}</div></section>`).join('');
+    return;
+  }
+  if (!(setting('pages') && sort === 'dex')) {
+    grid.innerHTML = `<div class="flat">${list.map(pk => tileHTML(pk)).join('')}</div>`;
+    return;
+  }
+  // strony albumu — puste miejsca (niepasujące do filtra) jako "duchy"
   const inList = new Set(list.map(pk => pk.id));
   const pages = [...new Set(list.map(pk => albumPos(pk.id).page))];
-  const out = [];
-  for (const page of pages) {
-    const startPos = (page - 1) * P;
-    let cells = '', have = 0, slots = 0;
-    for (let s = 0; s < P; s++) {
-      const id = startPos + s - offset + 1;
-      const pk = S.byId.get(id);
-      if (!pk) { cells += `<div class="tile ghost" aria-hidden="true"></div>`; continue; }
-      slots++;
-      if (S.store.owned[id]) have++;
-      cells += inList.has(id) ? tileHTML(pk) : `<div class="tile ghost" aria-hidden="true">${pad(id)}</div>`;
-    }
-    const firstId = Math.max(1, startPos - offset + 1), lastId = Math.min(total, startPos + P - offset);
-    out.push(`<section class="page"><div class="page-head"><b>Strona ${page}</b><span>${pad(firstId)}–${pad(lastId)}</span><span class="${have === slots ? 'done' : ''}">${have}/${slots}</span></div>
-      <div class="page-grid" style="--cols:${COLS[P] || 3}">${cells}</div></section>`);
+  grid.innerHTML = `<div class="pages">${pages.map(page => pageHTML(page, pk =>
+    inList.has(pk.id) ? tileHTML(pk) : `<div class="tile ghost" aria-hidden="true">${pad(pk.id)}</div>`)).join('')}</div>`;
+}
+function refreshTile(id) {
+  const el = document.querySelector(`.tile[data-id="${id}"]`);
+  const pk = S.byId.get(id);
+  if (el && pk) el.outerHTML = tileHTML(pk, isAlbum());
+  const pg = el && document.querySelector(`.page[data-page="${albumPos(id).page}"] .pg-count`);
+  if (pg) {
+    const { have, slots } = pageStats(albumPos(id).page);
+    pg.textContent = `${have}/${slots}`;
+    pg.classList.toggle('done', have === slots);
   }
-  grid.innerHTML = `<div class="pages">${out.join('')}</div>`;
+  renderProgress();
+  if (isAlbum()) $('#status').textContent = t('statusAlbum', Object.keys(S.store.owned).length, S.pokemon.length, totalOwnedCards());
 }
 
 // ===== Posiadanie =====
@@ -237,7 +421,7 @@ function setOwned(id, on) {
     if (!S.store.owned[id]) S.store.owned[id] = { t: Date.now(), cards: [] };
   } else {
     const o = S.store.owned[id];
-    if (o && o.cards.length && !confirm(`Usunąć też ${o.cards.length} ${plural(o.cards.length, 'zapisaną kartę', 'zapisane karty', 'zapisanych kart')}?`)) return false;
+    if (o && o.cards.length && !confirm(t('confirmRemoveCards', o.cards.length))) return false;
     delete S.store.owned[id];
   }
   saveStore();
@@ -249,15 +433,15 @@ function addCard(dex, cardId, variant) {
   saveStore();
 }
 function ownedCountOf(dex, cardId) {
-  return (S.store.owned[dex]?.cards || []).filter(c => c.id === cardId).length;
+  return ownedCards(dex).filter(c => c.id === cardId).length;
 }
 
-// ===== Szczegóły =====
+// ===== Szczegóły (nawigacja zawsze po kolejnych numerach Pokédex) =====
 const D = { series: '', sub: '', q: '', limit: CARD_PAGE };
 
-function openDetail(idx, push = true) {
-  if (idx < 0 || idx >= S.filtered.length) return;
-  S.cur = idx;
+function openDetail(id, push = true) {
+  if (!S.byId.has(id)) return;
+  S.cur = id;
   Object.assign(D, { series: '', sub: '', q: '', limit: CARD_PAGE });
   const el = $('#detail');
   const wasHidden = el.hidden;
@@ -265,61 +449,60 @@ function openDetail(idx, push = true) {
   document.body.style.overflow = 'hidden';
   renderDetail();
   $('#dScroll').scrollTop = 0;
-  const id = S.filtered[idx].id;
   if (push && wasHidden) history.pushState({ dex: id }, '', '#' + id);
   else history.replaceState({ dex: id }, '', '#' + id);
-  // wstępnie załaduj sąsiadów
-  [idx - 1, idx + 1].forEach(i => { const pk = S.filtered[i]; if (pk) { const im = new Image(); im.crossOrigin = 'anonymous'; im.src = ART(pk.id); } });
+  [id - 1, id + 1].forEach(n => { if (S.byId.has(n)) { const im = new Image(); im.crossOrigin = 'anonymous'; im.src = ART(n); } });
 }
 function closeDetail(fromPop = false) {
   const el = $('#detail');
   if (el.hidden) return;
   el.hidden = true;
   document.body.style.overflow = '';
-  const id = S.filtered[S.cur]?.id;
+  const id = S.cur;
   if (!fromPop && history.state && history.state.dex) history.back();
   renderGrid();
-  if (id) {
-    const t = document.querySelector(`.tile[data-id="${id}"]`);
-    if (t) t.scrollIntoView({ block: 'center' });
-  }
+  const tile = document.querySelector(`.tile[data-id="${id}"]`);
+  if (tile) tile.scrollIntoView({ block: 'center' });
 }
 
 function renderDetail() {
-  const pk = S.filtered[S.cur];
+  const pk = S.byId.get(S.cur);
   if (!pk) return;
   const cards = S.cardsByDex.get(pk.id) || [];
   const sets = new Set(cards.map(c => c.set.id));
   const { page, slot } = albumPos(pk.id);
   const owned = S.store.owned[pk.id];
-  $('#dPos').textContent = `${S.cur + 1} / ${S.filtered.length}`;
-  $('#dPrev').disabled = S.cur <= 0;
-  $('#dNext').disabled = S.cur >= S.filtered.length - 1;
+  $('#dPos').textContent = `${pk.id} / ${S.maxId}`;
+  $('#dPrev').disabled = !S.byId.has(pk.id - 1);
+  $('#dNext').disabled = !S.byId.has(pk.id + 1);
 
-  const html = `
+  $('#dInner').innerHTML = `
     <article class="bigcard" style="${typeVars(pk.types)}">
       <div class="bigcard-in">
         <div class="bc-head"><h2 id="dName">${esc(pk.name)}</h2><span class="bc-no">${pad(pk.id)}</span></div>
         <div class="bc-art"><img src="${ART(pk.id)}" crossorigin="anonymous" alt="${esc(pk.name)}" onerror="this.onerror=null;this.src='${SPRITE(pk.id)}'"><span class="gen">Gen ${GENS[pk.gen]}</span></div>
-        <div class="bc-types">${pk.types.map(t => `<i style="--tc:${TYPE_COLORS[t]}">${t}</i>`).join('')}</div>
+        <div class="bc-types">${pk.types.map(tp => `<i style="--tc:${TYPE_COLORS[tp]}">${tp}</i>`).join('')}</div>
         <dl class="bc-stats">
-          <div><dt>Wzrost</dt><dd>${fmt1(pk.h)} m</dd></div>
-          <div><dt>Waga</dt><dd>${fmt1(pk.w)} kg</dd></div>
-          <div><dt>Album</dt><dd>s.${page} · ${slot}</dd></div>
+          <div><dt>${t('height')}</dt><dd>${fmt1(pk.h)} m</dd></div>
+          <div><dt>${t('weight')}</dt><dd>${fmt1(pk.w)} kg</dd></div>
+          <div><dt>${t('album')}</dt><dd>${t('posAlbum', page, slot)}</dd></div>
         </dl>
-        <div class="bc-foot"><span>${cards.length} ${plural(cards.length, 'karta', 'karty', 'kart')} TCG</span><span>${sets.size} ${plural(sets.size, 'zestaw', 'zestawy', 'zestawów')}</span></div>
+        <div class="bc-foot"><span>${t('tcgCount', cards.length)}</span><span>${t('setsCount', sets.size)}</span></div>
       </div>
     </article>
-    <button class="btn own-toggle${owned ? ' is-owned' : ''}" id="ownToggle">${owned ? '✓ Mam tego stworka' : 'Oznacz jako posiadany'}</button>
+    <button class="btn own-toggle${owned ? ' is-owned' : ''}" id="ownToggle">${owned ? t('ownOn') : t('ownOff')}</button>
     ${ownedSectionHTML(pk)}
     <section class="section" id="tcgSection">${tcgSectionHTML(pk)}</section>`;
-  $('#dInner').innerHTML = html;
 }
 
 function cardLine(c) {
   const year = c.set.date ? c.set.date.slice(0, 4) : '';
   const total = c.set.total ? '/' + c.set.total : '';
   return `<span><span class="num">${esc(c.num)}${total}</span> · ${esc(c.rarity || '—')}${c.sub.length ? ' · ' + esc(c.sub.join(', ')) : ''}${year ? ' · ' + year : ''}</span>`;
+}
+function variantOptions(selected) {
+  return VARIANTS.map(v => `<option value="${esc(v)}"${v === selected ? ' selected' : ''}>${esc(variantLabel(v))}</option>`).join('')
+    + (selected && !VARIANTS.includes(selected) ? `<option selected>${esc(selected)}</option>` : '');
 }
 function ownedSectionHTML(pk) {
   const o = S.store.owned[pk.id];
@@ -328,14 +511,14 @@ function ownedSectionHTML(pk) {
     const c = S.cardById.get(oc.id);
     return `<li class="crow">
       ${c ? `<img class="thumb" loading="lazy" src="${esc(c.img)}" onerror="this.style.visibility='hidden'" alt="" data-card="${esc(c.id)}">` : '<span class="thumb"></span>'}
-      <div class="info">${c ? `<b>${esc(c.set.name)}</b>${cardLine(c)}` : `<b>${esc(oc.id)}</b><span>nieznana karta</span>`}
-        <select data-variant="${i}" aria-label="Typ karty">${VARIANTS.map(v => `<option${v === oc.v ? ' selected' : ''}>${v}</option>`).join('')}${VARIANTS.includes(oc.v) ? '' : `<option selected>${esc(oc.v)}</option>`}</select>
+      <div class="info">${c ? `<b>${esc(c.set.name)}</b>${cardLine(c)}` : `<b>${esc(oc.id)}</b><span>${t('unknownCard')}</span>`}
+        <select data-variant="${i}" aria-label="${t('cardType')}">${variantOptions(oc.v)}</select>
       </div>
-      <button class="act rm" data-remove="${i}" aria-label="Usuń kartę">✕</button>
+      <button class="act rm" data-remove="${i}" aria-label="${t('removeCard')}">✕</button>
     </li>`;
   }).join('');
-  return `<section class="section"><h3>Moje karty <small>${o.cards.length ? o.cards.length : 'wybierz z listy poniżej (+)'}</small></h3>
-    ${o.cards.length ? `<ul class="clist">${rows}</ul>` : '<p class="muted small" style="margin:0">Masz tego stworka — możesz dopisać konkretną kartę: kolekcję i typ (np. Reverse Holo).</p>'}</section>`;
+  return `<section class="section"><h3>${t('myCards')} <small>${o.cards.length ? o.cards.length : t('myCardsHint')}</small></h3>
+    ${o.cards.length ? `<ul class="clist">${rows}</ul>` : `<p class="muted small" style="margin:0">${t('myCardsEmpty')}</p>`}</section>`;
 }
 function tcgSectionHTML(pk) {
   const all = (S.cardsByDex.get(pk.id) || []).slice().sort((a, b) => (a.set.date || '').localeCompare(b.set.date || '') || a.set.i - b.set.i || numSort(a, b));
@@ -360,19 +543,19 @@ function tcgSectionHTML(pk) {
       <img class="thumb" loading="lazy" src="${esc(c.img)}" onerror="this.style.visibility='hidden'" alt="" data-card="${esc(c.id)}">
       <button class="info" data-card="${esc(c.id)}"><b>${esc(c.set.name)}${c.name !== pk.name ? ' — ' + esc(c.name) : ''}</b>${cardLine(c)}</button>
       ${have ? `<span class="have">✓${have > 1 ? have : ''}</span>` : ''}
-      <button class="act" data-add="${esc(c.id)}" aria-label="Dodaj kartę do kolekcji">+</button>
+      <button class="act" data-add="${esc(c.id)}" aria-label="${t('addCard')}">+</button>
     </li>`;
   }
   const chip = (kind, val, n, label) => `<button data-${kind}="${esc(val)}" aria-pressed="${D[kind] === val}">${esc(label)}<b>${n}</b></button>`;
-  return `<h3>Karty TCG <small>${all.length} ${plural(all.length, 'karta', 'karty', 'kart')}</small></h3>
-    <div class="summary-chips">${chip('series', '', all.length, 'Wszystkie serie')}${[...bySeries].map(([s, n]) => chip('series', s, n, s)).join('')}</div>
-    ${bySub.size > 1 ? `<div class="summary-chips">${chip('sub', '', all.length, 'Każdy rodzaj')}${[...bySub].sort((a, b) => b[1] - a[1]).map(([s, n]) => chip('sub', s, n, s)).join('')}</div>` : ''}
-    <input class="card-filter" id="cardFilter" type="search" placeholder="Szukaj: zestaw, kod, numer, rzadkość…" value="${esc(D.q)}" autocomplete="off">
-    ${list.length ? `<ul class="clist">${rows}</ul>` : '<p class="muted">Brak kart dla tego filtra.</p>'}
-    ${list.length > D.limit ? `<button class="btn ghost more" id="moreCards">Pokaż więcej (${list.length - D.limit})</button>` : ''}`;
+  return `<h3>${t('tcgTitle')} <small>${t('tcgCount', all.length)}</small></h3>
+    <div class="summary-chips">${chip('series', '', all.length, t('allSeries'))}${[...bySeries].map(([s, n]) => chip('series', s, n, s)).join('')}</div>
+    ${bySub.size > 1 ? `<div class="summary-chips">${chip('sub', '', all.length, t('allKinds'))}${[...bySub].sort((a, b) => b[1] - a[1]).map(([s, n]) => chip('sub', s, n, s)).join('')}</div>` : ''}
+    <input class="card-filter" id="cardFilter" type="search" placeholder="${t('cardFilterPh')}" value="${esc(D.q)}" autocomplete="off">
+    ${list.length ? `<ul class="clist">${rows}</ul>` : `<p class="muted">${t('noCards')}</p>`}
+    ${list.length > D.limit ? `<button class="btn ghost more" id="moreCards">${t('more', list.length - D.limit)}</button>` : ''}`;
 }
 function rerenderTcg() {
-  const pk = S.filtered[S.cur];
+  const pk = S.byId.get(S.cur);
   const sec = $('#tcgSection');
   const hadFocus = document.activeElement?.id === 'cardFilter';
   const pos = hadFocus ? document.activeElement.selectionStart : 0;
@@ -384,25 +567,24 @@ function rerenderTcg() {
 function openCardDialog(cardId) {
   const c = S.cardById.get(cardId);
   if (!c) return;
-  const pk = S.filtered[S.cur];
-  const dex = pk && c.dex.includes(pk.id) ? pk.id : c.dex[0];
+  const dex = c.dex.includes(S.cur) ? S.cur : c.dex[0];
   const have = ownedCountOf(dex, c.id);
   const guess = /holo|rare/i.test(c.rarity) && !/common|uncommon/i.test(c.rarity) ? 'Holo' : 'Normal';
   $('#cardDlgBody').innerHTML = `
     <div class="sheet-head"><h2>${esc(c.name)}</h2>
-      <button class="icon-btn dark" data-close aria-label="Zamknij"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4 6.4 5Z"/></svg></button></div>
+      <button class="icon-btn dark" data-close aria-label="${t('close')}"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4 6.4 5Z"/></svg></button></div>
     <div class="card-view">
       <img class="big" src="${esc(largeImg(c.img))}" alt="${esc(c.name)}" onerror="this.onerror=null;this.src='${esc(c.img)}'">
       <div>
         <div><b>${esc(c.set.name)}</b> <span class="muted">(${esc(c.set.code || c.set.id)})</span></div>
-        <div class="meta">Seria: ${esc(c.set.series)} · Nr <b>${esc(c.num)}${c.set.total ? '/' + c.set.total : ''}</b> · ${esc(c.rarity || '—')}</div>
-        <div class="meta">${esc(c.sub.join(', ') || '—')} · Wydano: ${esc(c.set.date || '?')} · ID: ${esc(c.id)}</div>
-        ${have ? `<div class="meta" style="color:var(--ok);font-weight:700">Masz ${have} ${plural(have, 'egzemplarz', 'egzemplarze', 'egzemplarzy')}</div>` : ''}
+        <div class="meta">${t('series')}: ${esc(c.set.series)} · ${t('no')} <b>${esc(c.num)}${c.set.total ? '/' + c.set.total : ''}</b> · ${esc(c.rarity || '—')}</div>
+        <div class="meta">${esc(c.sub.join(', ') || '—')} · ${t('released')}: ${esc(c.set.date || '?')} · ID: ${esc(c.id)}</div>
+        ${have ? `<div class="meta" style="color:var(--ok);font-weight:700">${t('haveCopies', have)}</div>` : ''}
       </div>
-      <label class="muted small" for="variantSel">Typ karty (wariant)</label>
+      <label class="muted small" for="variantSel">${t('variantLabel')}</label>
       <div class="add-row">
-        <select id="variantSel">${VARIANTS.map(v => `<option${v === guess ? ' selected' : ''}>${v}</option>`).join('')}</select>
-        <button class="btn ok" id="dlgAdd" data-dex="${dex}" data-card="${esc(c.id)}">Dodaj do kolekcji</button>
+        <select id="variantSel">${variantOptions(guess)}</select>
+        <button class="btn ok" id="dlgAdd" data-dex="${dex}" data-card="${esc(c.id)}">${t('addBtn')}</button>
       </div>
     </div>`;
   const dlg = $('#cardDlg');
@@ -412,7 +594,7 @@ function openCardDialog(cardId) {
 // ===== Nawigacja w szczegółach + swipe =====
 function go(delta) {
   const next = S.cur + delta;
-  if (next < 0 || next >= S.filtered.length) { bounce(delta); return; }
+  if (!S.byId.has(next)) { bounce(delta); return; }
   const inner = $('#dInner');
   inner.classList.add('anim');
   inner.style.transform = `translateX(${-delta * 100}%)`;
@@ -451,7 +633,7 @@ function setupSwipe() {
     const dy = y - y0;
     if (!lock && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) lock = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'x' : 'y';
     if (lock === 'x') {
-      const atEdge = (dx > 0 && S.cur === 0) || (dx < 0 && S.cur === S.filtered.length - 1);
+      const atEdge = !S.byId.has(S.cur + (dx < 0 ? 1 : -1));
       inner.style.transform = `translateX(${atEdge ? dx / 4 : dx}px)`;
       inner.style.opacity = String(1 - Math.min(Math.abs(dx) / 600, .4));
     }
@@ -493,11 +675,11 @@ function exportCSV() {
   const blob = new Blob(['﻿' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `pokedex-kolekcja-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `pokedex-tcg-${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(a);
   a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-  toast('Wyeksportowano CSV');
+  toast(t('exported'));
 }
 function parseCSV(text) {
   text = text.replace(/^﻿/, '');
@@ -522,11 +704,11 @@ function parseCSV(text) {
 }
 function importCSV(text, merge) {
   const rows = parseCSV(text);
-  if (!rows.length) throw new Error('Pusty plik');
+  if (!rows.length) throw new Error(t('emptyFile'));
   const head = rows[0].map(h => h.trim().toLowerCase());
   const col = n => head.indexOf(n);
   const iDex = col('dex');
-  if (iDex < 0) throw new Error('Brak kolumny "dex"');
+  if (iDex < 0) throw new Error(t('noDexCol'));
   const iOwned = col('owned'), iCard = col('card_id'), iSet = col('set_id'), iNum = col('card_number'), iVar = col('variant'), iAdded = col('added');
   const owned = merge ? structuredClone(S.store.owned) : {};
   // przy łączeniu nie dubluj kart, które już są zapisane (liczone per karta+wariant)
@@ -540,11 +722,11 @@ function importCSV(text, merge) {
   for (const r of rows.slice(1)) {
     const dex = parseInt(r[iDex], 10);
     if (!S.byId.has(dex)) continue;
-    const ownedVal = iOwned >= 0 ? String(r[iOwned]).trim().toLowerCase() : '1';
+    const ownedVal = iOwned >= 0 ? String(r[iOwned] ?? '').trim().toLowerCase() : '1';
     if (['0', 'false', 'nie', 'no', ''].includes(ownedVal)) continue;
     if (!owned[dex]) {
-      const t = iAdded >= 0 && r[iAdded] ? Date.parse(r[iAdded]) : NaN;
-      owned[dex] = { t: isNaN(t) ? Date.now() : t, cards: [] };
+      const tm = iAdded >= 0 && r[iAdded] ? Date.parse(r[iAdded]) : NaN;
+      owned[dex] = { t: isNaN(tm) ? Date.now() : tm, cards: [] };
       nPk++;
     }
     let cid = iCard >= 0 ? (r[iCard] || '').trim() : '';
@@ -554,8 +736,8 @@ function importCSV(text, merge) {
       cid = found ? found.id : `${sid}-${r[iNum].trim()}`;
     }
     if (!cid) continue;
-    const v = (iVar >= 0 && r[iVar] ? r[iVar].trim() : '') || 'Normal';
-    // przy łączeniu: k-ty egzemplarz tej samej karty+wariantu dodaj tylko, jeśli jeszcze go nie ma
+    let v = (iVar >= 0 && r[iVar] ? r[iVar].trim() : '') || 'Normal';
+    if (v === 'Inny') v = 'Other';
     const base = `${dex}|${cid}|${v}`;
     const k = perKey.get(base) || 0;
     perKey.set(base, k + 1);
@@ -571,15 +753,22 @@ function importCSV(text, merge) {
 // ===== UI: drobiazgi =====
 let toastTimer;
 function toast(msg) {
-  const t = $('#toast');
-  t.textContent = msg;
-  t.classList.add('show');
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+function applyLang() {
+  const pref = setting('lang');
+  LANG = pref === 'pl' || pref === 'en' ? pref : ((navigator.language || '').toLowerCase().startsWith('pl') ? 'pl' : 'en');
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
 }
 function syncFilterInputs() {
   const f = F();
-  $('#q').value = f.q || '';
   $('#fOwned').value = f.owned || '';
   $('#fGen').value = f.gen || '';
   $('#fSet').value = f.set || '';
@@ -590,16 +779,13 @@ function syncFilterInputs() {
 }
 function updateDataInfo() {
   const o = Object.values(S.store.owned);
-  const nc = o.reduce((s, x) => s + x.cards.length, 0);
-  $('#dataInfo').textContent = `Zapisane: ${o.length} ${plural(o.length, 'stworek', 'stworki', 'stworków')}, ${nc} ${plural(nc, 'karta', 'karty', 'kart')}.`;
-  $('#dataStats').textContent = `${S.sets.length} zestawów, ${S.cards.length.toLocaleString('pl-PL')} kart Pokémon, ostatni: ${S.sets[S.sets.length - 1]?.name}`;
+  $('#dataInfo').textContent = t('dataInfo', o.length, totalOwnedCards());
+  $('#sourcesText').innerHTML = t('sources', S.sets.length, S.cards.length, esc(S.sets[S.sets.length - 1]?.name));
 }
-
 function buildFilterUI() {
   $('#typeChips').innerHTML = Object.entries(TYPE_COLORS)
-    .map(([t, c]) => `<button class="chip" data-type="${t}" style="--tc:${c}" aria-pressed="false">${t}</button>`).join('');
+    .map(([tp, c]) => `<button class="chip" data-type="${tp}" style="--tc:${c}" aria-pressed="false">${tp}</button>`).join('');
   $('#fGen').insertAdjacentHTML('beforeend', GENS.slice(1).map((g, i) => `<option value="${i + 1}">${g}</option>`).join(''));
-  // zestawy pogrupowane wg serii, najnowsze na górze
   const bySeries = new Map();
   [...S.sets].reverse().forEach(s => {
     if (!bySeries.has(s.series)) bySeries.set(s.series, []);
@@ -608,12 +794,64 @@ function buildFilterUI() {
   $('#fSet').insertAdjacentHTML('beforeend', [...bySeries].map(([series, sets]) =>
     `<optgroup label="${esc(series)}">${sets.map(s => `<option value="${esc(s.id)}">${esc(s.name)}${s.code ? ' · ' + esc(s.code) : ''} (${s.date.slice(0, 4)})</option>`).join('')}</optgroup>`).join(''));
 }
+function albumJump(q, next = false) {
+  if (!q.trim()) { S.albumHit = -1; return; }
+  const test = queryTest(q);
+  const hits = S.pokemon.filter(test);
+  if (!hits.length) { toast(t('notFound')); return; }
+  const cur = hits.findIndex(pk => pk.id === S.albumHit);
+  const pk = next && cur >= 0 ? hits[(cur + 1) % hits.length] : hits[0];
+  S.albumHit = pk.id;
+  const el = document.querySelector(`.tile[data-id="${pk.id}"]`);
+  if (!el) return;
+  el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  el.classList.remove('flash');
+  void el.offsetWidth;
+  el.classList.add('flash');
+}
 
 // ===== Zdarzenia =====
 function bindEvents() {
   let qTimer;
   const setF = (k, v) => { S.store.filters[k] = v; saveStore(); renderGrid(); };
-  $('#q').addEventListener('input', e => { clearTimeout(qTimer); qTimer = setTimeout(() => setF('q', e.target.value), 150); });
+
+  // wyszukiwanie + przycisk czyszczenia
+  const q = $('#q');
+  q.addEventListener('input', () => {
+    $('#qClear').hidden = !q.value;
+    clearTimeout(qTimer);
+    qTimer = setTimeout(() => {
+      if (isAlbum()) { S.albumQ = q.value; albumJump(q.value); }
+      else setF('q', q.value);
+    }, 200);
+  });
+  q.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      if (isAlbum()) albumJump(q.value, true);
+      else q.blur();
+    }
+  });
+  $('#qClear').addEventListener('click', () => {
+    clearTimeout(qTimer);
+    q.value = '';
+    $('#qClear').hidden = true;
+    if (isAlbum()) { S.albumQ = ''; S.albumHit = -1; }
+    else setF('q', '');
+    q.focus();
+  });
+
+  // widoki
+  document.querySelector('.views').addEventListener('click', e => {
+    const b = e.target.closest('[data-view]');
+    if (!b || b.dataset.view === setting('view')) return;
+    S.store.settings.view = b.dataset.view;
+    saveStore();
+    $('#filters').hidden = true;
+    $('#filterBtn').setAttribute('aria-expanded', 'false');
+    renderGrid();
+    window.scrollTo(0, 0);
+  });
+
   $('#fOwned').addEventListener('change', e => setF('owned', e.target.value));
   $('#fGen').addEventListener('change', e => setF('gen', e.target.value));
   $('#fSet').addEventListener('change', e => {
@@ -650,15 +888,12 @@ function bindEvents() {
       e.stopPropagation();
       const id = +tg.dataset.toggle;
       if (setOwned(id, !isOwned(id))) {
-        const tile = tg.closest('.tile');
-        tile.classList.toggle('owned', isOwned(id));
-        tg.setAttribute('aria-pressed', String(isOwned(id)));
-        if (F().owned) renderGrid(); else renderProgressOnly();
+        if (!isAlbum() && F().owned) renderGrid(); else refreshTile(id);
       }
       return;
     }
     const tile = e.target.closest('.tile[data-id]');
-    if (tile) openDetail(S.filtered.findIndex(pk => pk.id === +tile.dataset.id));
+    if (tile) openDetail(+tile.dataset.id);
   });
   $('#grid').addEventListener('keydown', e => {
     if (e.key === 'Enter' && e.target.matches('.tile[data-id]')) e.target.click();
@@ -679,9 +914,9 @@ function bindEvents() {
     if (!$('#detail').hidden && !(history.state && history.state.dex)) closeDetail(true);
   });
   $('#dInner').addEventListener('click', e => {
-    const pk = S.filtered[S.cur];
+    const pk = S.byId.get(S.cur);
     if (e.target.closest('#ownToggle')) {
-      if (setOwned(pk.id, !isOwned(pk.id))) { renderDetail(); toast(isOwned(pk.id) ? `Dodano: ${pk.name}` : `Usunięto: ${pk.name}`); }
+      if (setOwned(pk.id, !isOwned(pk.id))) { renderDetail(); toast(isOwned(pk.id) ? t('added', pk.name) : t('removed', pk.name)); }
       return;
     }
     const add = e.target.closest('[data-add]');
@@ -690,8 +925,7 @@ function bindEvents() {
     if (card) { openCardDialog(card.dataset.card); return; }
     const rm = e.target.closest('[data-remove]');
     if (rm) {
-      const o = S.store.owned[pk.id];
-      o.cards.splice(+rm.dataset.remove, 1);
+      S.store.owned[pk.id].cards.splice(+rm.dataset.remove, 1);
       saveStore(); renderDetail();
       return;
     }
@@ -704,9 +938,8 @@ function bindEvents() {
   $('#dInner').addEventListener('change', e => {
     const sel = e.target.closest('[data-variant]');
     if (!sel) return;
-    const pk = S.filtered[S.cur];
-    S.store.owned[pk.id].cards[+sel.dataset.variant].v = sel.value;
-    saveStore(); toast('Zapisano typ karty');
+    S.store.owned[S.cur].cards[+sel.dataset.variant].v = sel.value;
+    saveStore(); toast(t('variantSaved'));
   });
   $('#dInner').addEventListener('input', e => {
     if (e.target.id !== 'cardFilter') return;
@@ -719,32 +952,38 @@ function bindEvents() {
     if (e.target === e.currentTarget || e.target.closest('[data-close]')) { e.currentTarget.close(); return; }
     const btn = e.target.closest('#dlgAdd');
     if (btn) {
-      const dex = +btn.dataset.dex;
-      addCard(dex, btn.dataset.card, $('#variantSel').value);
+      addCard(+btn.dataset.dex, btn.dataset.card, $('#variantSel').value);
       e.currentTarget.close();
       if (!$('#detail').hidden) renderDetail();
-      toast('Dodano kartę do kolekcji');
+      toast(t('cardAdded'));
     }
   });
 
   // ustawienia
   const sd = $('#settingsDlg');
   $('#settingsBtn').addEventListener('click', () => {
+    $('#sLang').value = LANG;
     $('#sPocket').value = String(setting('pocket'));
     $('#sOffset').value = String(setting('offset'));
     $('#sPages').checked = !!setting('pages');
+    $('#sCardImg').checked = !!setting('cardImg');
     $('#sHd').checked = !!setting('hd');
     updateDataInfo();
     sd.showModal();
   });
   sd.addEventListener('click', e => { if (e.target === sd || e.target.closest('[data-close]')) sd.close(); });
   const setS = (k, v) => { S.store.settings[k] = v; saveStore(); renderGrid(); };
+  $('#sLang').addEventListener('change', e => {
+    S.store.settings.lang = e.target.value; saveStore();
+    applyLang(); updateDataInfo(); renderGrid();
+  });
   $('#sPocket').addEventListener('change', e => setS('pocket', +e.target.value));
   $('#sOffset').addEventListener('change', e => {
     const v = Math.min(+setting('pocket'), Math.max(1, parseInt(e.target.value, 10) || 1));
     e.target.value = v; setS('offset', v);
   });
   $('#sPages').addEventListener('change', e => setS('pages', e.target.checked));
+  $('#sCardImg').addEventListener('change', e => setS('cardImg', e.target.checked));
   $('#sHd').addEventListener('change', e => setS('hd', e.target.checked));
   $('#exportBtn').addEventListener('click', exportCSV);
   $('#importFile').addEventListener('change', async e => {
@@ -752,48 +991,27 @@ function bindEvents() {
     e.target.value = '';
     if (!file) return;
     const merge = $('#importMerge').checked;
-    if (!merge && Object.keys(S.store.owned).length && !confirm('Import zastąpi całą obecną kolekcję. Kontynuować?')) return;
+    if (!merge && Object.keys(S.store.owned).length && !confirm(t('importReplace'))) return;
     try {
       const { nPk, nCards } = importCSV(await file.text(), merge);
       updateDataInfo(); renderGrid();
-      toast(`Zaimportowano: ${nPk} nowych stworków, ${nCards} kart`);
-    } catch (err) { alert('Błąd importu: ' + err.message); }
+      toast(t('importDone', nPk, nCards));
+    } catch (err) { alert(t('importError') + err.message); }
   });
   $('#resetBtn').addEventListener('click', () => {
-    if (!confirm('Na pewno usunąć całą kolekcję? Najpierw zrób eksport CSV, jeśli chcesz mieć kopię.')) return;
-    S.store.owned = {}; saveStore(); updateDataInfo(); renderGrid(); toast('Kolekcja wyczyszczona');
-  });
-}
-function renderProgressOnly() {
-  const ownedCount = Object.keys(S.store.owned).length;
-  $('#progressFill').style.width = (ownedCount / S.pokemon.length * 100).toFixed(1) + '%';
-  $('#progressText').textContent = `Mam ${ownedCount} / ${S.pokemon.length}`;
-  // odśwież licznik strony albumu
-  document.querySelectorAll('.page').forEach(pg => {
-    const ids = [...pg.querySelectorAll('.tile[data-id]')].map(t => +t.dataset.id);
-    const head = pg.querySelector('.page-head span:last-child');
-    if (!head || !ids.length) return;
-    const first = ids[0];
-    const { page } = albumPos(first);
-    const P = +setting('pocket'), off = Math.max(1, +setting('offset') || 1) - 1;
-    let have = 0, slots = 0;
-    for (let s = 0; s < P; s++) {
-      const id = (page - 1) * P + s - off + 1;
-      if (!S.byId.has(id)) continue;
-      slots++; if (S.store.owned[id]) have++;
-    }
-    head.textContent = `${have}/${slots}`;
-    head.className = have === slots ? 'done' : '';
+    if (!confirm(t('resetConfirm'))) return;
+    S.store.owned = {}; saveStore(); updateDataInfo(); renderGrid(); toast(t('resetDone'));
   });
 }
 
 // ===== Start =====
 async function main() {
   loadStore();
+  applyLang();
   try {
     await loadData();
   } catch (e) {
-    $('#status').textContent = 'Nie udało się wczytać danych. Otwórz stronę przez serwer HTTP (nie file://).';
+    $('#status').textContent = t('loadError');
     console.error(e);
     return;
   }
@@ -802,9 +1020,9 @@ async function main() {
   bindEvents();
   renderGrid();
   const fromHash = parseInt(location.hash.slice(1), 10);
-  if (fromHash) {
-    const idx = S.filtered.findIndex(pk => pk.id === fromHash);
-    if (idx >= 0) { history.replaceState(null, '', location.pathname + location.search); openDetail(idx); }
+  if (S.byId.has(fromHash)) {
+    history.replaceState(null, '', location.pathname + location.search);
+    openDetail(fromHash);
   }
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW', err));

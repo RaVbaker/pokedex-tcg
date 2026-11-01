@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Pokédex TCG</title>
-  <meta name="description" content="National Pokédex do układania kart Pokémon TCG w albumie i śledzenia kolekcji.">
+  <meta name="description" content="National Pokédex for sorting Pokémon TCG cards in a binder and tracking your collection.">
   <meta name="theme-color" content="#c8102e">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -27,72 +27,81 @@
           <span id="progressText">…</span>
         </div>
       </div>
-      <button class="icon-btn" id="settingsBtn" aria-label="Ustawienia, eksport i import">
+      <button class="icon-btn" id="settingsBtn" data-i18n-aria="settings">
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.7h-4l-.4 2.7c-.6.3-1.2.6-1.7 1l-2.5-1-2 3.5L4.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1l.4 2.7h4l.4-2.7c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5L19.4 13ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
       </button>
+    </div>
+
+    <div class="views" role="tablist">
+      <button role="tab" id="viewDex" data-view="dex" aria-selected="true" data-i18n="viewDex">Pokédex</button>
+      <button role="tab" id="viewAlbum" data-view="album" aria-selected="false" data-i18n="viewAlbum">Mój album</button>
     </div>
 
     <div class="search-row">
       <label class="search">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3Zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z"/></svg>
-        <input id="q" type="search" placeholder="Nazwa (ang.), nr #25 lub zakres 1-151" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+        <input id="q" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
+        <button type="button" class="clear-btn" id="qClear" hidden data-i18n-aria="clear">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm3.5 5.1L12 10.6 8.5 7.1 7.1 8.5l3.5 3.5-3.5 3.5 1.4 1.4 3.5-3.5 3.5 3.5 1.4-1.4-3.5-3.5 3.5-3.5-1.4-1.4Z"/></svg>
+        </button>
       </label>
       <button class="filter-btn" id="filterBtn" aria-expanded="false" aria-controls="filters">
-        Filtry <span class="badge" id="filterCount" hidden>0</span>
+        <span data-i18n="filters">Filtry</span> <span class="badge" id="filterCount" hidden>0</span>
       </button>
     </div>
 
     <div class="filters" id="filters" hidden>
-      <div class="chips" id="typeChips" role="group" aria-label="Typ"></div>
+      <div class="chips" id="typeChips" role="group" data-i18n-aria="type"></div>
       <div class="filter-grid">
-        <label>Posiadanie
+        <label><span data-i18n="ownership">Posiadanie</span>
           <select id="fOwned">
-            <option value="">Wszystkie</option>
-            <option value="owned">Mam</option>
-            <option value="missing">Brakuje</option>
+            <option value="" data-i18n="all">Wszystkie</option>
+            <option value="owned" data-i18n="owned">Mam</option>
+            <option value="missing" data-i18n="missing">Brakuje</option>
           </select>
         </label>
-        <label>Generacja
-          <select id="fGen"><option value="">Wszystkie</option></select>
+        <label><span data-i18n="generation">Generacja</span>
+          <select id="fGen"><option value="" data-i18n="all">Wszystkie</option></select>
         </label>
-        <label class="wide">Kolekcja (zestaw kart)
-          <select id="fSet"><option value="">Wszystkie zestawy</option></select>
+        <label class="wide"><span data-i18n="setLabel">Kolekcja (zestaw kart)</span>
+          <select id="fSet"><option value="" data-i18n="allSets">Wszystkie zestawy</option></select>
         </label>
-        <label>Nr w kolekcji
-          <input id="fNum" type="text" inputmode="text" placeholder="np. 25 lub 25/165" autocomplete="off">
+        <label><span data-i18n="numLabel">Nr w kolekcji</span>
+          <input id="fNum" type="text" inputmode="text" data-i18n-ph="numPh" autocomplete="off">
         </label>
-        <label>Sortowanie
+        <label><span data-i18n="sort">Sortowanie</span>
           <select id="fSort">
-            <option value="dex">Nr Pokédex</option>
-            <option value="name">Nazwa A–Z</option>
-            <option value="set">Kolejność w zestawie</option>
+            <option value="dex" data-i18n="sortDex">Nr Pokédex</option>
+            <option value="name" data-i18n="sortName">Nazwa A–Z</option>
+            <option value="type" data-i18n="sortType">Typ</option>
+            <option value="set" data-i18n="sortSet">Kolejność w zestawie</option>
           </select>
         </label>
       </div>
       <div class="filter-actions">
-        <button class="btn ghost" id="clearFilters">Wyczyść filtry</button>
-        <button class="btn" id="closeFilters">Gotowe</button>
+        <button class="btn ghost" id="clearFilters" data-i18n="clearFilters">Wyczyść filtry</button>
+        <button class="btn" id="closeFilters" data-i18n="done">Gotowe</button>
       </div>
     </div>
   </header>
 
   <main id="main">
-    <p class="status" id="status">Ładowanie danych…</p>
+    <p class="status" id="status" data-i18n="loading">Ładowanie danych…</p>
     <div id="grid"></div>
   </main>
 
   <!-- Szczegóły stworka -->
   <div class="detail" id="detail" hidden aria-modal="true" role="dialog" aria-labelledby="dName">
     <div class="detail-bar">
-      <button class="icon-btn" id="dClose" aria-label="Zamknij">
+      <button class="icon-btn" id="dClose" data-i18n-aria="close">
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4 6.4 5Z"/></svg>
       </button>
       <span class="detail-pos" id="dPos"></span>
       <div class="detail-nav">
-        <button class="icon-btn" id="dPrev" aria-label="Poprzedni">
+        <button class="icon-btn" id="dPrev" data-i18n-aria="prev">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="m15.4 5-7 7 7 7 1.4-1.4-5.6-5.6 5.6-5.6L15.4 5Z"/></svg>
         </button>
-        <button class="icon-btn" id="dNext" aria-label="Następny">
+        <button class="icon-btn" id="dNext" data-i18n-aria="next">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="m8.6 5 7 7-7 7-1.4-1.4 5.6-5.6-5.6-5.6L8.6 5Z"/></svg>
         </button>
       </div>
@@ -111,15 +120,24 @@
   <dialog id="settingsDlg" class="sheet">
     <div class="sheet-body">
       <div class="sheet-head">
-        <h2>Ustawienia</h2>
-        <button class="icon-btn dark" data-close aria-label="Zamknij">
+        <h2 data-i18n="settings">Ustawienia</h2>
+        <button class="icon-btn dark" data-close data-i18n-aria="close">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4 6.4 5Z"/></svg>
         </button>
       </div>
 
       <section class="set-group">
-        <h3>Album</h3>
-        <label class="row">Kieszonek na stronie
+        <label class="row"><span data-i18n="language">Język</span>
+          <select id="sLang">
+            <option value="pl">Polski</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="set-group">
+        <h3 data-i18n="binder">Album</h3>
+        <label class="row"><span data-i18n="pockets">Kieszonek na stronie</span>
           <select id="sPocket">
             <option value="4">4 (2×2)</option>
             <option value="9">9 (3×3)</option>
@@ -127,28 +145,29 @@
             <option value="16">16 (4×4)</option>
           </select>
         </label>
-        <label class="row">Pierwsza strona zaczyna się od pozycji
+        <label class="row"><span data-i18n="offset">Pierwsza strona zaczyna się od pozycji</span>
           <input id="sOffset" type="number" min="1" max="16" value="1" inputmode="numeric">
         </label>
-        <label class="row check"><input type="checkbox" id="sPages"> Podział na strony albumu</label>
-        <label class="row check"><input type="checkbox" id="sHd"> Duże obrazki w siatce (więcej danych)</label>
+        <label class="row check"><input type="checkbox" id="sPages"> <span data-i18n="pagesToggle">Podział na strony albumu</span></label>
+        <label class="row check"><input type="checkbox" id="sCardImg"> <span data-i18n="cardImgToggle">„Mój album”: pokazuj obrazki moich kart</span></label>
+        <label class="row check"><input type="checkbox" id="sHd"> <span data-i18n="hdToggle">Duże obrazki w siatce (więcej danych)</span></label>
       </section>
 
       <section class="set-group">
-        <h3>Dane</h3>
-        <p class="muted">Kolekcja zapisuje się automatycznie w tej przeglądarce (localStorage). Eksportuj CSV, żeby mieć kopię lub przenieść dane na inne urządzenie.</p>
+        <h3 data-i18n="dataSec">Dane</h3>
+        <p class="muted" data-i18n="dataHint"></p>
         <div class="btn-row">
-          <button class="btn" id="exportBtn">Eksport CSV</button>
-          <label class="btn ghost file">Import CSV<input type="file" id="importFile" accept=".csv,text/csv,text/plain"></label>
+          <button class="btn" id="exportBtn" data-i18n="export">Eksport CSV</button>
+          <label class="btn ghost file"><span data-i18n="import">Import CSV</span><input type="file" id="importFile" accept=".csv,text/csv,text/plain"></label>
         </div>
-        <label class="row check"><input type="checkbox" id="importMerge" checked> Import dołącza do obecnych danych (odznacz, by zastąpić)</label>
+        <label class="row check"><input type="checkbox" id="importMerge" checked> <span data-i18n="importMerge"></span></label>
         <p class="muted small" id="dataInfo"></p>
-        <button class="btn danger" id="resetBtn">Wyczyść całą kolekcję</button>
+        <button class="btn danger" id="resetBtn" data-i18n="reset">Wyczyść całą kolekcję</button>
       </section>
 
       <section class="set-group">
-        <h3>Źródła danych</h3>
-        <p class="muted small">Stworki: <a href="https://github.com/PokeAPI/pokeapi" target="_blank" rel="noopener">PokeAPI</a>. Karty: <a href="https://github.com/PokemonTCG/pokemon-tcg-data" target="_blank" rel="noopener">pokemon-tcg-data</a> (<span id="dataStats"></span>). Pokémon i nazwy są znakami towarowymi Nintendo / Game Freak / The Pokémon Company — to nieoficjalne narzędzie fanowskie.</p>
+        <h3 data-i18n="sourcesSec">Źródła danych</h3>
+        <p class="muted small" id="sourcesText"></p>
       </section>
     </div>
   </dialog>

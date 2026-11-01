@@ -6,10 +6,13 @@ Prosta strona (PWA) w stylu National Pokédex do zbierania kart Pokémon TCG i u
 
 - **1025 stworków** w kolejności National Pokédex — każdy jako mini-karta: obrazek, nazwa, numer, typ(y), wzrost i waga, liczba kart TCG i pozycja w albumie (`s.3·7` = strona 3, kieszonka 7).
 - **Strony albumu** — siatka podzielona na strony (4/9/12/16 kieszonek, ustawiane w ⚙︎), z licznikiem „mam X/9” na każdej stronie. Przy filtrze „Mam/Brakuje” puste kieszonki pokazują się jako przerywane ramki.
-- **Szczegóły stworka** — duża karta z artworkiem; **swipe w lewo/prawo** (albo strzałki ‹ › / klawiatura) przechodzi do kolejnego stworka z bieżącej listy.
+- **Mój album** — drugi widok: wszystkie strony albumu po kolei, stworki których nie masz są wyszarzone, a tam gdzie masz konkretną kartę, widać jej obrazek. Wyszukiwarka w tym widoku przewija do stworka (Enter = następne trafienie).
+- **Szczegóły stworka** — duża karta z artworkiem; **swipe w lewo/prawo** (albo strzałki ‹ › / klawiatura) zawsze przechodzi do poprzedniego/następnego numeru Pokédex, niezależnie od filtrów.
+- **Licznik kart** — w nagłówku: ile stworków i ile kart masz; na kafelku żółta plakietka z liczbą, gdy masz więcej niż jedną kartę danego stworka.
+- **Język interfejsu**: polski lub angielski (⚙︎; domyślnie wg języka przeglądarki).
 - **Karty TCG** z bazy [pokemon-tcg-data](https://github.com/PokemonTCG/pokemon-tcg-data): ile kart ma stworek, w których seriach (chipy z licznikami), jakiego rodzaju (Basic, ex, V, VMAX, GX…), z numerem w zestawie, rzadkością i rokiem. Tapnięcie pokazuje dużą kartę.
 - **Kolekcja** — kółko ✓ na kafelku (albo przycisk w szczegółach) oznacza stworka jako posiadanego. W szczegółach `+` przy karcie dopisuje konkretną kartę: kolekcję (zestaw + numer) i typ karty (Normal, Holo, Reverse Holo, 1st Edition…).
-- **Filtry i wyszukiwanie**: nazwa (ang.), numer (`25`, `#25`), zakres (`1-151`), typ (kilka = wszystkie naraz, np. Fire+Flying), generacja, posiadanie, kolekcja kart (zestaw) i numer w kolekcji (`25` lub `25/165`), sortowanie po kolejności w zestawie.
+- **Filtry i wyszukiwanie** (✕ czyści pole): nazwa (ang.), numer (`25`, `#25`), zakres (`1-151`), typ (kilka = wszystkie naraz, np. Fire+Flying), generacja, posiadanie, kolekcja kart (zestaw) i numer w kolekcji (`25` lub `25/165`), sortowanie: nr Pokédex, nazwa, typ (grupy wg typu) lub kolejność w zestawie.
 - **Zapis w localStorage** + **eksport/import CSV** (⚙︎). Eksport zawiera wszystkich 1025 stworków (`owned` 0/1) — nadaje się też jako checklista w arkuszu. Import przyjmuje separator `,` lub `;`, kolumny `dex`, `owned`, `card_id` albo `set_id` + `card_number`, `variant`.
 - **PWA** — da się dodać do ekranu głównego, działa offline (dane i odwiedzone obrazki stworków są w cache).
 
