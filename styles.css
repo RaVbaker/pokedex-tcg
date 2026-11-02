@@ -524,7 +524,6 @@ button.scan-side { border: 0; background: transparent; color: #fff; padding: 0; 
   position: absolute; top: 4px; right: 4px; z-index: 2; width: 24px; height: 24px; border-radius: 12px;
   background: #e0457b; color: #fff; font-size: 13px; line-height: 24px; text-align: center; box-shadow: 0 0 0 2px #fff;
 }
-.scard:has(.scard-wish) { filter: none; opacity: .8; }
 .wish-mark { flex: none; color: #e0457b; font-size: 18px; }
 .wish-btn.on { color: #e0457b; border-color: #e0457b; }
 .dlg-actions { margin: 0; }
@@ -548,3 +547,12 @@ button.scan-side { border: 0; background: transparent; color: #fff; padding: 0; 
 .scan-form-row { display: grid; grid-template-columns: 1fr 72px; gap: 6px; }
 .scan-form-row input { width: 100%; }
 .hp-ok { color: var(--ok); font-weight: 700; }
+
+/* Lista życzeń w widoku zestawu: inaczej niż brakujące — lekko przygaszone, różowa obwódka i serduszko */
+.scard.wish:not(.have) { filter: grayscale(.35) saturate(.85); opacity: .9; box-shadow: 0 0 0 3px #e0457b, 0 1px 3px rgb(0 0 0 / .2); background: #fde7ef; }
+.scard.wish .scard-fb { color: #a3245a; }
+
+/* Serduszko w nagłówku okna karty */
+.sheet-head h2 { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.icon-btn.wish-head { color: #e0457b; }
+.icon-btn.wish-head.on { background: #fde7ef; }

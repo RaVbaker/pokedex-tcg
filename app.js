@@ -6,7 +6,7 @@
 
 // ===== Stałe =====
 // Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
-const APP_VERSION = '7';
+const APP_VERSION = '8';
 const APP_DATE = '2026-11-02';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
@@ -20,7 +20,7 @@ const TYPE_COLORS = {
 };
 const TYPE_ORDER = Object.keys(TYPE_COLORS);
 const GENS = ['', 'I · Kanto', 'II · Johto', 'III · Hoenn', 'IV · Sinnoh', 'V · Unova', 'VI · Kalos', 'VII · Alola', 'VIII · Galar', 'IX · Paldea'];
-const VARIANTS = ['Normal', 'Holo', 'Reverse Holo', '1st Edition', 'Shadowless', 'Promo / Stamped', 'Other'];
+const VARIANTS = ['Normal', 'Holo', 'Reverse Holo', 'Reverse Holo (Poké Ball)', 'Reverse Holo (Master Ball)', '1st Edition', 'Shadowless', 'Promo / Stamped', 'Other'];
 const COLS = { 4: 2, 9: 3, 12: 4, 16: 4 };
 const CARD_PAGE = 60; // ile kart TCG pokazać naraz w szczegółach
 
@@ -75,7 +75,7 @@ const I18N = {
     viewWish: 'Życzenia', searchPhWish: 'Szukaj na liście życzeń',
     wishStatus: (n, v) => `Lista życzeń: ${n} ${plPlural(n, 'karta', 'karty', 'kart')}${v ? ` · wartość ok. ${v}` : ''}`,
     wishEmpty: 'Lista życzeń jest pusta. Dodaj brakującą kartę przyciskiem ♡ w oknie karty — z Pokédexu, widoku zestawu albo skanera.',
-    wishAdd: '♡ Dodaj do listy życzeń', wishIn: '♥ Na liście życzeń (usuń)', wishAdded: 'Dodano do listy życzeń', wishRemoved: 'Usunięto z listy życzeń',
+    wishAdd: 'Dodaj do listy życzeń', wishIn: 'Na liście życzeń — usuń', wishAdded: 'Dodano do listy życzeń', wishRemoved: 'Usunięto z listy życzeń',
     cardAddedWish: 'Dodano kartę do kolekcji i zdjęto z listy życzeń', wishHave: 'Masz już tę kartę',
     cardKind: 'Rodzaj', rarityLbl: 'Rzadkość', illus: 'Ilustracja', regMark: 'Znak regulacji',
     tiers: { 0: '—', 1: 'pospolita', 2: 'niepospolita', 3: 'rzadka', 4: 'bardzo rzadka', 5: 'ultra rzadka', 6: 'najrzadsza (sekretna)', promo: 'promo — nie z boosterów' },
@@ -165,7 +165,7 @@ const I18N = {
     viewWish: 'Wishlist', searchPhWish: 'Search the wishlist',
     wishStatus: (n, v) => `Wishlist: ${n} ${enPlural(n, 'card', 'cards')}${v ? ` · about ${v}` : ''}`,
     wishEmpty: 'Your wishlist is empty. Add a missing card with the ♡ button in the card window — from the Pokédex, a set view or the scanner.',
-    wishAdd: '♡ Add to wishlist', wishIn: '♥ On wishlist (remove)', wishAdded: 'Added to wishlist', wishRemoved: 'Removed from wishlist',
+    wishAdd: 'Add to wishlist', wishIn: 'On wishlist — remove', wishAdded: 'Added to wishlist', wishRemoved: 'Removed from wishlist',
     cardAddedWish: 'Card added to collection and removed from wishlist', wishHave: 'You already have this card',
     cardKind: 'Kind', rarityLbl: 'Rarity', illus: 'Illustrator', regMark: 'Regulation mark',
     tiers: { 0: '—', 1: 'common', 2: 'uncommon', 3: 'rare', 4: 'very rare', 5: 'ultra rare', 6: 'rarest (secret)', promo: 'promo — not from boosters' },
@@ -631,9 +631,60 @@ function cardLine(c) {
   const total = c.set.total ? '/' + c.set.total : '';
   return `<span><span class="num">${esc(c.num)}${total}</span> · ${esc(c.rarity || '—')}${c.sub.length ? ' · ' + esc(c.sub.join(', ')) : ''}${year ? ' · ' + year : ''}</span>`;
 }
-function variantOptions(selected) {
-  return VARIANTS.map(v => `<option value="${esc(v)}"${v === selected ? ' selected' : ''}>${esc(variantLabel(v))}</option>`).join('')
-    + (selected && !VARIANTS.includes(selected) ? `<option selected>${esc(selected)}</option>` : '');
+// ===== Warianty karty dostępne dla konkretnej karty =====
+// 1) z zapisanych cen PokéWallet (TCGplayer zna dokładne wersje: Normal, Holofoil, Reverse Holofoil, 1st Edition…)
+// 2) inaczej z zasad: rzadkość + era zestawu (dane kart nie zawierają listy wariantów)
+const WOTC_1ST = new Set(['base1', 'base2', 'base3', 'base5', 'gym1', 'gym2', 'neo1', 'neo2', 'neo3', 'neo4']);
+const BALL_REVERSE = new Set(['sv3pt5', 'sv8pt5']); // 151, Prismatic Evolutions: reverse z Poké Ball / Master Ball
+function availableVariants(c) {
+  const out = new Set();
+  const pw = typeof priceCache === 'function' ? priceCache()[c.id]?.pw : null;
+  if (pw) {
+    for (const r of [...pw.tcg, ...pw.cm]) {
+      const v = String(r.v || '').toLowerCase();
+      if (/1st|first/.test(v)) out.add('1st Edition');
+      else if (/reverse/.test(v)) out.add('Reverse Holo');
+      else if (/holo|foil/.test(v)) out.add('Holo');
+      else out.add('Normal');
+    }
+  }
+  if (!out.size) {
+    const tier = rarityTier(c.rarity);
+    const date = c.set.date || '';
+    const wotc = date < '2002-05';                 // przed Legendary Collection: bez reverse holo
+    const sv = date >= '2023-03';                   // Scarlet & Violet+: „Rare” to karta holo
+    const holoR = /holo/i.test(c.rarity) || (sv && /^rare$/i.test(c.rarity));
+    if (tier === 'promo') { out.add('Normal'); out.add('Holo'); }
+    else if (tier === 0) { out.add('Normal'); out.add('Holo'); if (!wotc) out.add('Reverse Holo'); }
+    else if (tier >= 4) out.add('Holo');           // ex, V, GX, ilustracyjne, sekretne… — jedna wersja
+    else {
+      out.add(holoR ? 'Holo' : 'Normal');
+      if (!wotc) out.add('Reverse Holo');
+    }
+    if (WOTC_1ST.has(c.set.id)) out.add('1st Edition');
+    if (c.set.id === 'base1') out.add('Shadowless');
+  }
+  if (BALL_REVERSE.has(c.set.id) && out.has('Reverse Holo')) { out.add('Reverse Holo (Poké Ball)'); out.add('Reverse Holo (Master Ball)'); }
+  if (/promo/i.test(c.set.name) || /^promo$/i.test(c.rarity)) out.add('Promo / Stamped');
+  out.add('Other');
+  return VARIANTS.filter(v => out.has(v));
+}
+function defaultVariant(c, list = availableVariants(c)) {
+  const holoR = /holo|rare/i.test(c.rarity) && !/common|uncommon/i.test(c.rarity);
+  return holoR && list.includes('Holo') ? 'Holo' : list[0];
+}
+function variantOptions(selected, card = null) {
+  const list = card ? availableVariants(card) : VARIANTS;
+  return list.map(v => `<option value="${esc(v)}"${v === selected ? ' selected' : ''}>${esc(variantLabel(v))}</option>`).join('')
+    + (selected && !list.includes(selected) ? `<option selected>${esc(variantLabel(selected))}</option>` : '');
+}
+// po pobraniu cen lista wariantów może być dokładniejsza — odśwież wybór w otwartym oknie karty
+function refreshVariantSelect(card) {
+  const sel = $('#variantSel');
+  if (!sel || $('#priceBox')?.dataset.card !== card.id) return;
+  const list = availableVariants(card);
+  const cur = list.includes(sel.value) ? sel.value : defaultVariant(card, list);
+  sel.innerHTML = variantOptions(cur, card);
 }
 function ownedSectionHTML(pk) {
   const o = S.store.owned[pk.id];
@@ -643,7 +694,7 @@ function ownedSectionHTML(pk) {
     return `<li class="crow">
       ${c ? `<img class="thumb" loading="lazy" src="${esc(c.img)}" onerror="this.style.visibility='hidden'" alt="" data-card="${esc(c.id)}">` : '<span class="thumb"></span>'}
       <div class="info">${c ? `<b>${esc(c.set.name)} ${priceTag(c.id, oc.v)}</b>${cardLine(c)}` : `<b>${esc(oc.id)}</b><span>${t('unknownCard')}</span>`}
-        <select data-variant="${i}" aria-label="${t('cardType')}">${variantOptions(oc.v)}</select>
+        <select data-variant="${i}" aria-label="${t('cardType')}">${variantOptions(oc.v, c)}</select>
       </div>
       <button class="act rm" data-remove="${i}" aria-label="${t('removeCard')}">✕</button>
     </li>`;
@@ -734,9 +785,9 @@ function openCardDialog(cardId) {
   if (!c) return;
   const dex = c.dex.includes(S.cur) ? S.cur : (c.dex[0] || 0);
   const have = ownedCountOf(dex, c.id);
-  const guess = /holo|rare/i.test(c.rarity) && !/common|uncommon/i.test(c.rarity) ? 'Holo' : 'Normal';
+  const guess = defaultVariant(c);
   $('#cardDlgBody').innerHTML = `
-    <div class="sheet-head"><h2>${esc(c.name)}</h2>
+    <div class="sheet-head">${wishButtonHTML(c.id)}<h2>${esc(c.name)}</h2>
       <button class="icon-btn dark" data-close aria-label="${t('close')}"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4 6.4 5Z"/></svg></button></div>
     <div class="card-view">
       <img class="big" src="${esc(largeImg(c.img))}" alt="${esc(c.name)}" onerror="this.onerror=null;this.src='${esc(c.img)}'">
@@ -750,13 +801,10 @@ function openCardDialog(cardId) {
       <div class="price-box" id="priceBox" data-card="${esc(c.id)}"></div>
       <label class="muted small" for="variantSel">${t('variantLabel')}</label>
       <div class="add-row">
-        <select id="variantSel">${variantOptions(guess)}</select>
+        <select id="variantSel">${variantOptions(guess, c)}</select>
         <button class="btn ok" id="dlgAdd" data-dex="${dex}" data-card="${esc(c.id)}">${have ? t('addMore') : t('addBtn')}</button>
       </div>
-      <div class="btn-row dlg-actions">
-        ${have ? `<button class="btn ghost" id="dlgRemove" data-card="${esc(c.id)}">${t('removeOne')}</button>` : ''}
-        ${wishButtonHTML(c.id)}
-      </div>
+      ${have ? `<div class="btn-row dlg-actions"><button class="btn ghost" id="dlgRemove" data-card="${esc(c.id)}">${t('removeOne')}</button></div>` : ''}
     </div>`;
   const dlg = $('#cardDlg');
   if (!dlg.open) dlg.showModal();

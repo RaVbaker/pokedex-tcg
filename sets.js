@@ -121,7 +121,7 @@ function renderSetView() {
     <div class="set-cards">${list.map(c => {
       const n = idx.get(c.id) || 0;
       const secret = pr.secret > 0 && !(/^\d+$/.test(c.num) && parseInt(c.num, 10) <= set.total);
-      return `<button class="scard${n ? ' have' : ''}" data-card="${esc(c.id)}" aria-label="${esc(c.name)} ${esc(c.num)}">
+      return `<button class="scard${n ? ' have' : inWish(c.id) ? ' wish' : ''}" data-card="${esc(c.id)}" aria-label="${esc(c.name)} ${esc(c.num)}">
         <span class="scard-fb"><b>${esc(c.num)}</b><span>${esc(c.name)}</span></span>
         <img loading="lazy" decoding="async" alt="" src="${esc(c.img)}" onerror="this.remove()">
         <span class="scard-no${secret ? ' secret' : ''}">${esc(c.num)}</span>${priceTag(c.id, null)}

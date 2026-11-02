@@ -152,8 +152,8 @@ async function getPrice(card, { force = false } = {}) {
 
 // ===== Wybór ceny dla wariantu =====
 function variantRe(variant) {
+  if (String(variant).startsWith('Reverse Holo')) return { want: /reverse/i };
   switch (variant) {
-    case 'Reverse Holo': return { want: /reverse/i };
     case 'Holo': return { want: /holo|foil/i, not: /reverse/i };
     case '1st Edition': return { want: /1st|first/i };
     default: return { want: /normal|unlimited|^$/i, not: /reverse|holo|foil/i };
@@ -234,7 +234,10 @@ async function renderPriceBox(card, force = false) {
   try {
     const r = await getPrice(card, { force });
     const still = $('#priceBox');
-    if (still && still.dataset.card === card.id) still.innerHTML = priceBoxHTML(card, r);
+    if (still && still.dataset.card === card.id) {
+      still.innerHTML = priceBoxHTML(card, r);
+      if (typeof refreshVariantSelect === 'function') refreshVariantSelect(card);
+    }
   } catch (e) {
     const still = $('#priceBox');
     if (still && still.dataset.card === card.id) still.innerHTML = (cached ? priceBoxHTML(card, cached) : '') + `<p class="pw-err small">${esc(e.message)}</p>`;
