@@ -543,3 +543,8 @@ button.scan-side { border: 0; background: transparent; color: #fff; padding: 0; 
 
 /* O aplikacji */
 .about-author { margin: 10px 0 4px; font-size: 14px; }
+
+/* Skaner: pole HP obok numeru */
+.scan-form-row { display: grid; grid-template-columns: 1fr 72px; gap: 6px; }
+.scan-form-row input { width: 100%; }
+.hp-ok { color: var(--ok); font-weight: 700; }
