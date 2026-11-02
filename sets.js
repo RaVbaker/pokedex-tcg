@@ -16,8 +16,9 @@ function setProgress(set) {
     const have = idx.has(c.id);
     if (isBase) { base++; if (have) baseHave++; } else { secret++; if (have) secretHave++; }
   }
-  // gdy zestaw nie ma numeracji „x/total” (np. promki), wszystko liczymy jako zwykłe
-  if (!base) { base = secret; baseHave = secretHave; secret = 0; secretHave = 0; }
+  // gdy zestaw nie ma numeracji „x/total” (promki) albo karty mają oryginalne numery z innych zestawów
+  // (np. Classic Collection: 58, 101… przy rozmiarze 30), wszystko liczymy jako zwykłe
+  if (!base || secret > base) { base += secret; baseHave += secretHave; secret = 0; secretHave = 0; }
   return { base, baseHave, secret, secretHave, all: cards.length, allHave: baseHave + secretHave };
 }
 
@@ -57,7 +58,7 @@ function renderSets(grid) {
           <small>${esc(set.code || set.id)} · ${esc((set.date || '').slice(0, 4))}</small>
           <span class="set-bar"><span style="width:${pct}%"></span></span>
         </span>
-        <span class="set-count"><b>${pr.baseHave}/${pr.base}</b>${pr.secret ? `<small>${t('secret', pr.secretHave, pr.secret)}</small>` : ''}${done ? `<small class="ok">✓ ${t('complete')}</small>` : `<small>${pct}%</small>`}</span>
+        <span class="set-count"><b>${pr.baseHave}/${pr.base}</b>${pr.secret ? `<span class="set-secret">${t('secret', pr.secretHave, pr.secret)}</span>` : ''}${done ? `<small class="ok">✓ ${t('complete')}</small>` : `<small>${pct}%</small>`}</span>
       </button>`);
     }
     rows.push(`</div></section>`);
@@ -112,19 +113,19 @@ function renderSetView() {
         <h2>${setSymbol(set)} ${esc(set.name)}</h2>
         <div class="muted">${esc(set.series)} · ${esc(set.code || set.id)} · ${esc(set.date || '')}</div>
         <div class="set-bar big"><span style="width:${pct}%"></span></div>
-        <div class="set-hero-count"><b>${pr.baseHave}/${pr.base}</b> (${pct}%)${pr.secret ? ` · ${t('secret', pr.secretHave, pr.secret)}` : ''}</div>
+        <div class="set-hero-count"><b>${pr.baseHave}/${pr.base}</b> (${pct}%)${pr.secret ? `<span class="set-secret big">${t('secret', pr.secretHave, pr.secret)}</span>` : ''}</div>
         ${setValueLine(set)}
       </div>
     </div>
     <div class="summary-chips">${chip('all', t('showAll'), cards.length)}${chip('missing', t('showMissing'), cards.length - pr.allHave)}${chip('owned', t('showOwned'), pr.allHave)}</div>
     <div class="set-cards">${list.map(c => {
       const n = idx.get(c.id) || 0;
-      const secret = !(/^\d+$/.test(c.num) && parseInt(c.num, 10) <= set.total);
+      const secret = pr.secret > 0 && !(/^\d+$/.test(c.num) && parseInt(c.num, 10) <= set.total);
       return `<button class="scard${n ? ' have' : ''}" data-card="${esc(c.id)}" aria-label="${esc(c.name)} ${esc(c.num)}">
         <span class="scard-fb"><b>${esc(c.num)}</b><span>${esc(c.name)}</span></span>
         <img loading="lazy" decoding="async" alt="" src="${esc(c.img)}" onerror="this.remove()">
         <span class="scard-no${secret ? ' secret' : ''}">${esc(c.num)}</span>${priceTag(c.id, null)}
-        ${n ? `<span class="scard-check">${n > 1 ? n : '✓'}</span>` : ''}
+        ${n ? `<span class="scard-check">${n > 1 ? n : '✓'}</span>` : inWish(c.id) ? '<span class="scard-wish" aria-hidden="true">♥</span>' : ''}
       </button>`;
     }).join('')}</div>`;
 }

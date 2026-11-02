@@ -393,7 +393,7 @@ function showResults(results) {
   const idx = ownedIndex();
   const dexOf = top.find(x => x.nameOnly && x.c.dex[0])?.c.dex[0];
   $('#scanResult').innerHTML = `
-    <div class="scan-res-head"><b>${t('scanResultTitle')}</b><button class="btn small scan-again">${t('scanAgain')}</button></div>
+    <div class="scan-res-head"><b>${t('scanResultTitle')}</b><button class="icon-btn dark scan-again" aria-label="${t('scanAgain')}" title="${t('scanAgain')}"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 4a8 8 0 0 1 7.4 5H17v2h6V5h-2v2.3A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8Zm8 8a8 8 0 0 1-15.4 3H7v-2H1v6h2v-2.3A10 10 0 0 0 22 12h-2Z"/></svg></button></div>
     <div class="scan-read">
       <img src="${r.thumb}" alt="">
       <form class="scan-form" id="scanForm">

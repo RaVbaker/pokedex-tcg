@@ -1,11 +1,11 @@
 /* Service worker: offline dla aplikacji i danych, cache obrazków stworków. */
 // Wersja aplikacji — podbijaj razem z APP_VERSION w app.js przy każdej zmianie plików
-const VERSION = 'v6';
+const VERSION = 'v7';
 const SHELL = `pokedex-shell-${VERSION}`;
 const IMG = 'pokedex-img-v1';
 const ASSETS = [
   './', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest',
-  'sets.js', 'scanner.js', 'prices.js', 'data/pokemon.json', 'data/cards.json',
+  'sets.js', 'scanner.js', 'prices.js', 'wishlist.js', 'data/pokemon.json', 'data/cards.json',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
 ];
 

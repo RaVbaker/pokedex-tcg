@@ -6,7 +6,7 @@
 
 // ===== Stałe =====
 // Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
-const APP_VERSION = '6';
+const APP_VERSION = '7';
 const APP_DATE = '2026-11-02';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
@@ -72,10 +72,21 @@ const I18N = {
     export: 'Eksport CSV', import: 'Import CSV', importMerge: 'Import dołącza do obecnych danych (odznacz, by zastąpić)',
     dataInfo: (p, c) => `Zapisane: ${p} ${plPlural(p, 'stworek', 'stworki', 'stworków')}, ${c} ${plPlural(c, 'karta', 'karty', 'kart')}.`,
     reset: 'Wyczyść całą kolekcję', sourcesSec: 'Źródła danych',
+    viewWish: 'Życzenia', searchPhWish: 'Szukaj na liście życzeń',
+    wishStatus: (n, v) => `Lista życzeń: ${n} ${plPlural(n, 'karta', 'karty', 'kart')}${v ? ` · wartość ok. ${v}` : ''}`,
+    wishEmpty: 'Lista życzeń jest pusta. Dodaj brakującą kartę przyciskiem ♡ w oknie karty — z Pokédexu, widoku zestawu albo skanera.',
+    wishAdd: '♡ Dodaj do listy życzeń', wishIn: '♥ Na liście życzeń (usuń)', wishAdded: 'Dodano do listy życzeń', wishRemoved: 'Usunięto z listy życzeń',
+    cardAddedWish: 'Dodano kartę do kolekcji i zdjęto z listy życzeń', wishHave: 'Masz już tę kartę',
+    cardKind: 'Rodzaj', rarityLbl: 'Rzadkość', illus: 'Ilustracja', regMark: 'Znak regulacji',
+    tiers: { 0: '—', 1: 'pospolita', 2: 'niepospolita', 3: 'rzadka', 4: 'bardzo rzadka', 5: 'ultra rzadka', 6: 'najrzadsza (sekretna)', promo: 'promo — nie z boosterów' },
+    supLabel: { 'Pokémon': 'Pokémon', Trainer: 'Trener', Energy: 'Energia' },
+    noDropRate: 'Szansa wypadnięcia z boostera (pull rate) nie jest dostępna w danych — zależy od zestawu.',
+    aboutAuthor: 'Autor: <a href="https://ravbaker.net" target="_blank" rel="noopener">Rafał Piekarski „RaVbaker”</a>',
+    aboutLegal: 'Pokémon, nazwy postaci, grafiki i karty Pokémon TCG są własnością i znakami towarowymi The Pokémon Company, Nintendo, Game Freak i Creatures Inc. To nieoficjalna, niekomercyjna strona fanowska, niezwiązana z tymi firmami ani przez nie wspierana.',
     aboutSec: 'O aplikacji', version: (v, d) => `Wersja ${v} (${d})`, swVersion: v => `Wersja offline (service worker): ${v}`,
     swNone: 'Tryb offline: nieaktywny', checkUpdate: 'Sprawdź aktualizacje', updChecking: 'Sprawdzam…',
     updLatest: 'Masz najnowszą wersję.', updFound: 'Jest nowa wersja — wczytuję…', updError: 'Nie udało się sprawdzić aktualizacji.',
-    sources: (s, c, last) => `Stworki: <a href="https://github.com/PokeAPI/pokeapi" target="_blank" rel="noopener">PokeAPI</a>. Karty: <a href="https://github.com/PokemonTCG/pokemon-tcg-data" target="_blank" rel="noopener">pokemon-tcg-data</a> (${s} zestawów, ${nf(c)} kart, ostatni: ${last}). Pokémon i nazwy są znakami towarowymi Nintendo / Game Freak / The Pokémon Company — to nieoficjalne narzędzie fanowskie.`,
+    sources: (s, c, last) => `Stworki: <a href="https://github.com/PokeAPI/pokeapi" target="_blank" rel="noopener">PokeAPI</a>. Karty: <a href="https://github.com/PokemonTCG/pokemon-tcg-data" target="_blank" rel="noopener">pokemon-tcg-data</a> (${s} zestawów, ${nf(c)} kart, ostatni: ${last}).`,
     confirmRemoveCards: n => `Usunąć też ${n} ${plPlural(n, 'zapisaną kartę', 'zapisane karty', 'zapisanych kart')}?`,
     exported: 'Wyeksportowano CSV', importDone: (p, c) => `Zaimportowano: ${p} nowych stworków, ${c} kart`,
     importReplace: 'Import zastąpi całą obecną kolekcję. Kontynuować?', importError: 'Błąd importu: ',
@@ -151,10 +162,21 @@ const I18N = {
     export: 'Export CSV', import: 'Import CSV', importMerge: 'Import adds to current data (uncheck to replace)',
     dataInfo: (p, c) => `Saved: ${p} Pokémon, ${c} ${enPlural(c, 'card', 'cards')}.`,
     reset: 'Clear entire collection', sourcesSec: 'Data sources',
+    viewWish: 'Wishlist', searchPhWish: 'Search the wishlist',
+    wishStatus: (n, v) => `Wishlist: ${n} ${enPlural(n, 'card', 'cards')}${v ? ` · about ${v}` : ''}`,
+    wishEmpty: 'Your wishlist is empty. Add a missing card with the ♡ button in the card window — from the Pokédex, a set view or the scanner.',
+    wishAdd: '♡ Add to wishlist', wishIn: '♥ On wishlist (remove)', wishAdded: 'Added to wishlist', wishRemoved: 'Removed from wishlist',
+    cardAddedWish: 'Card added to collection and removed from wishlist', wishHave: 'You already have this card',
+    cardKind: 'Kind', rarityLbl: 'Rarity', illus: 'Illustrator', regMark: 'Regulation mark',
+    tiers: { 0: '—', 1: 'common', 2: 'uncommon', 3: 'rare', 4: 'very rare', 5: 'ultra rare', 6: 'rarest (secret)', promo: 'promo — not from boosters' },
+    supLabel: { 'Pokémon': 'Pokémon', Trainer: 'Trainer', Energy: 'Energy' },
+    noDropRate: 'Booster pull rates are not available in the data — they depend on the set.',
+    aboutAuthor: 'Made by <a href="https://ravbaker.net" target="_blank" rel="noopener">Rafał Piekarski “RaVbaker”</a>',
+    aboutLegal: 'Pokémon, character names, artwork and Pokémon TCG cards are property and trademarks of The Pokémon Company, Nintendo, Game Freak and Creatures Inc. This is an unofficial, non-commercial fan site, not affiliated with or endorsed by them.',
     aboutSec: 'About', version: (v, d) => `Version ${v} (${d})`, swVersion: v => `Offline version (service worker): ${v}`,
     swNone: 'Offline mode: not active', checkUpdate: 'Check for updates', updChecking: 'Checking…',
     updLatest: 'You have the latest version.', updFound: 'New version found — loading…', updError: 'Could not check for updates.',
-    sources: (s, c, last) => `Pokémon: <a href="https://github.com/PokeAPI/pokeapi" target="_blank" rel="noopener">PokeAPI</a>. Cards: <a href="https://github.com/PokemonTCG/pokemon-tcg-data" target="_blank" rel="noopener">pokemon-tcg-data</a> (${s} sets, ${nf(c)} cards, latest: ${last}). Pokémon and character names are trademarks of Nintendo / Game Freak / The Pokémon Company — this is an unofficial fan tool.`,
+    sources: (s, c, last) => `Pokémon: <a href="https://github.com/PokeAPI/pokeapi" target="_blank" rel="noopener">PokeAPI</a>. Cards: <a href="https://github.com/PokemonTCG/pokemon-tcg-data" target="_blank" rel="noopener">pokemon-tcg-data</a> (${s} sets, ${nf(c)} cards, latest: ${last}).`,
     confirmRemoveCards: n => `Also remove ${n} saved ${enPlural(n, 'card', 'cards')}?`,
     exported: 'CSV exported', importDone: (p, c) => `Imported: ${p} new Pokémon, ${c} cards`,
     importReplace: 'Import will replace your whole collection. Continue?', importError: 'Import error: ',
@@ -206,8 +228,8 @@ const S = {
   pokemon: [], byId: new Map(), maxId: 0,
   sets: [], cards: [], cardsByDex: new Map(), cardById: new Map(),
   filtered: [], cur: 0,
-  store: { owned: {}, settings: {}, filters: {}, other: [] },
-  albumQ: '', albumHit: -1, setsQ: '', cardsBySet: new Map(), ownedIdx: null,
+  store: { owned: {}, settings: {}, filters: {}, other: [], wish: [] },
+  albumQ: '', albumHit: -1, setsQ: '', wishQ: '', cardsBySet: new Map(), ownedIdx: null,
 };
 const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', priceSrc: 'cm', camId: '', camZoom: 1, pwTtl: 7 };
 
@@ -228,6 +250,7 @@ function loadStore() {
       S.store.settings = d.settings || {};
       S.store.filters = d.filters || {};
       S.store.other = d.other || [];
+      S.store.wish = d.wish || [];
       // zgodność wstecz: wariant "Inny" -> "Other"
       for (const o of Object.values(S.store.owned)) for (const c of o.cards || []) if (c.v === 'Inny') c.v = 'Other';
     }
@@ -271,8 +294,12 @@ async function loadData() {
       sub: r[4].map(i => c.subtypes[i]),
       dex: Array.isArray(r[5]) ? r[5] : (r[5] ? [r[5]] : []),
       sup: c.supertypes ? c.supertypes[r[6]] : 'Pokémon',
-      id: r[7] || `${set.id}-${num}`,
-      img: r[8] || `https://images.pokemontcg.io/${set.id}/${num}.png`,
+      hp: r[7] || 0,
+      etypes: (r[8] || []).map(i => c.etypes[i]),
+      artist: r[9] >= 0 ? c.artists[r[9]] : '',
+      reg: r[10] || '',
+      id: r[11] || `${set.id}-${num}`,
+      img: r[12] || `https://images.pokemontcg.io/${set.id}/${num}.png`,
       nn: normNum(num),
     };
   });
@@ -432,8 +459,8 @@ function renderGrid() {
   renderProgress();
   document.body.classList.toggle('album-mode', view !== 'dex');
   document.querySelectorAll('.views [data-view]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === view)));
-  $('#q').placeholder = view === 'sets' ? t('searchPhSets') : album ? t('searchPhAlbum') : t('searchPh');
-  const qv = view === 'sets' ? S.setsQ : album ? S.albumQ : (F().q || '');
+  $('#q').placeholder = view === 'sets' ? t('searchPhSets') : view === 'wish' ? t('searchPhWish') : album ? t('searchPhAlbum') : t('searchPh');
+  const qv = view === 'sets' ? S.setsQ : view === 'wish' ? S.wishQ : album ? S.albumQ : (F().q || '');
   if ($('#q').value !== qv) $('#q').value = qv;
   $('#qClear').hidden = !$('#q').value;
   const fc = activeFilterCount();
@@ -441,6 +468,7 @@ function renderGrid() {
   $('#filterCount').textContent = fc;
 
   if (view === 'sets') { renderSets(grid); return; }
+  if (view === 'wish') { renderWish(grid); return; }
 
   if (album) {
     // Mój album: wszystkie strony, brakujące lekko wyszarzone
@@ -510,11 +538,14 @@ function setOwned(id, on) {
   saveStore();
   return true;
 }
+// zwraca true, gdy karta zeszła przy okazji z listy życzeń
 function addCard(dex, cardId, variant) {
-  if (!dex) { S.store.other.push({ id: cardId, v: variant || 'Normal', t: Date.now() }); saveStore(); return; }
+  const fromWish = removeFromWish(cardId);
+  if (!dex) { S.store.other.push({ id: cardId, v: variant || 'Normal', t: Date.now() }); saveStore(); return fromWish; }
   setOwned(dex, true);
   S.store.owned[dex].cards.push({ id: cardId, v: variant || 'Normal' });
   saveStore();
+  return fromWish;
 }
 function ownedCountOf(dex, cardId) {
   return ownedIndex().get(cardId) || 0;
@@ -642,7 +673,7 @@ function tcgSectionHTML(pk) {
     rows += `<li class="crow${hl}">
       <img class="thumb" loading="lazy" src="${esc(c.img)}" onerror="this.style.visibility='hidden'" alt="" data-card="${esc(c.id)}">
       <button class="info" data-card="${esc(c.id)}"><b>${esc(c.set.name)}${c.name !== pk.name ? ' — ' + esc(c.name) : ''}</b>${cardLine(c)}</button>
-      ${have ? `<span class="have">✓${have > 1 ? have : ''}</span>` : ''}
+      ${have ? `<span class="have">✓${have > 1 ? have : ''}</span>` : inWish(c.id) ? '<span class="wish-mark" aria-hidden="true">♥</span>' : ''}
       <button class="act" data-add="${esc(c.id)}" aria-label="${t('addCard')}">+</button>
     </li>`;
   }
@@ -663,6 +694,40 @@ function rerenderTcg() {
   if (hadFocus) { const i = $('#cardFilter'); i.focus(); i.setSelectionRange(pos, pos); }
 }
 
+// ===== Informacje o karcie (rzadkość, rodzaj, HP, energia, ilustrator) =====
+const ENERGY_COLORS = {
+  Grass: '#5fae3b', Fire: '#e4572e', Water: '#3d8fd6', Lightning: '#e8b923', Psychic: '#8e4fb0', Fighting: '#b0643a',
+  Darkness: '#3b3f4a', Metal: '#8a96a3', Dragon: '#a88a2c', Fairy: '#d685ad', Colorless: '#a9a9a9',
+};
+// opisowy poziom rzadkości 1–6 (dane nie zawierają szans wypadnięcia z boostera)
+function rarityTier(r) {
+  if (!r) return 0;
+  if (/^promo$/i.test(r)) return 'promo';
+  if (/^common$/i.test(r)) return 1;
+  if (/^uncommon$/i.test(r)) return 2;
+  if (/^(rare|rare holo)$/i.test(r)) return 3;
+  if (/secret|rainbow|hyper|special illustration|shiny ultra|shiny gx/i.test(r)) return 6;
+  if (/ultra|^illustration rare|^shiny rare|ace spec|black white|futuristic|mega_attack/i.test(r)) return 5;
+  return 4;
+}
+const RARITY_SYMBOL = { 1: '●', 2: '◆', 3: '★', 4: '★★', 5: '★★★', 6: '✦' };
+function cardInfoHTML(c) {
+  const tier = rarityTier(c.rarity);
+  const dots = typeof tier === 'number' && tier > 0
+    ? `<span class="tier-dots" aria-hidden="true">${'●'.repeat(tier)}${'○'.repeat(6 - tier)}</span>` : '';
+  const kind = [I18N[LANG].supLabel?.[c.sup] || c.sup, ...c.sub].filter(Boolean);
+  const chip = (txt, cls = '', style = '') => `<span class="ci-chip ${cls}"${style ? ` style="${style}"` : ''}>${esc(txt)}</span>`;
+  return `<div class="card-info">
+    <div class="ci-row"><span class="ci-lbl">${t('rarityLbl')}</span>
+      <span class="ci-val"><b>${esc(RARITY_SYMBOL[tier] || '')} ${esc(c.rarity || '—')}</b> <span class="muted">· ${esc(t('tiers')[tier] ?? '—')}</span> ${dots}</span></div>
+    <div class="ci-row"><span class="ci-lbl">${t('cardKind')}</span>
+      <span class="ci-val">${kind.map(k => chip(k)).join('')}${c.etypes.map(e => chip(e, 'energy', `background:${ENERGY_COLORS[e] || '#888'}`)).join('')}${c.hp ? chip(`HP ${c.hp}`, 'hp') : ''}</span></div>
+    ${c.artist ? `<div class="ci-row"><span class="ci-lbl">${t('illus')}</span><span class="ci-val">${esc(c.artist)}</span></div>` : ''}
+    ${c.reg ? `<div class="ci-row"><span class="ci-lbl">${t('regMark')}</span><span class="ci-val"><span class="reg-mark">${esc(c.reg)}</span></span></div>` : ''}
+    <p class="muted small ci-note">${t('noDropRate')}</p>
+  </div>`;
+}
+
 // ===== Dialog karty =====
 function openCardDialog(cardId) {
   const c = S.cardById.get(cardId);
@@ -678,16 +743,20 @@ function openCardDialog(cardId) {
       <div>
         <div><b>${esc(c.set.name)}</b> <span class="muted">(${esc(c.set.code || c.set.id)})</span></div>
         <div class="meta">${t('series')}: ${esc(c.set.series)} · ${t('no')} <b>${esc(c.num)}${c.set.total ? '/' + c.set.total : ''}</b> · ${esc(c.rarity || '—')}</div>
-        <div class="meta">${esc(c.sub.join(', ') || '—')} · ${t('released')}: ${esc(c.set.date || '?')} · ID: ${esc(c.id)}</div>
+        <div class="meta">${t('released')}: ${esc(c.set.date || '?')} · ID: ${esc(c.id)}</div>
         ${have ? `<div class="meta" style="color:var(--ok);font-weight:700">${t('haveCopies', have)}</div>` : ''}
       </div>
+      ${cardInfoHTML(c)}
       <div class="price-box" id="priceBox" data-card="${esc(c.id)}"></div>
       <label class="muted small" for="variantSel">${t('variantLabel')}</label>
       <div class="add-row">
         <select id="variantSel">${variantOptions(guess)}</select>
         <button class="btn ok" id="dlgAdd" data-dex="${dex}" data-card="${esc(c.id)}">${have ? t('addMore') : t('addBtn')}</button>
       </div>
-      ${have ? `<button class="btn ghost" id="dlgRemove" data-card="${esc(c.id)}">${t('removeOne')}</button>` : ''}
+      <div class="btn-row dlg-actions">
+        ${have ? `<button class="btn ghost" id="dlgRemove" data-card="${esc(c.id)}">${t('removeOne')}</button>` : ''}
+        ${wishButtonHTML(c.id)}
+      </div>
     </div>`;
   const dlg = $('#cardDlg');
   if (!dlg.open) dlg.showModal();
@@ -754,7 +823,7 @@ function setupSwipe() {
 }
 
 // ===== CSV =====
-const CSV_HEAD = ['dex', 'name', 'owned', 'card_id', 'set_id', 'set_name', 'series', 'card_number', 'set_total', 'rarity', 'card_name', 'variant', 'album_page', 'album_slot', 'added', 'price', 'currency', 'price_date'];
+const CSV_HEAD = ['dex', 'name', 'owned', 'card_id', 'set_id', 'set_name', 'series', 'card_number', 'set_total', 'rarity', 'card_name', 'variant', 'album_page', 'album_slot', 'added', 'price', 'currency', 'price_date', 'wishlist'];
 // cena z zapisanych (bez zapytań do API): [kwota, waluta, data]
 function csvPrice(cardId, variant) {
   const v = typeof cardValue === 'function' ? cardValue(cardId, variant) : null;
@@ -785,6 +854,11 @@ function exportCSV() {
     const c = S.cardById.get(oc.id);
     const added = oc.t ? new Date(oc.t).toISOString().slice(0, 10) : '';
     lines.push([0, c?.name || '', 1, oc.id, c?.set.id, c?.set.name, c?.set.series, c?.num, c?.set.total, c?.rarity, c?.name, oc.v, '', '', added, ...csvPrice(oc.id, oc.v)].map(csvCell).join(','));
+  }
+  for (const w of S.store.wish) {
+    const c = S.cardById.get(w.id);
+    const added = w.t ? new Date(w.t).toISOString().slice(0, 10) : '';
+    lines.push([c?.dex[0] || 0, c?.name || '', 0, w.id, c?.set.id, c?.set.name, c?.set.series, c?.num, c?.set.total, c?.rarity, c?.name, '', '', '', added, ...csvPrice(w.id, null), 1].map(csvCell).join(','));
   }
   const blob = new Blob(['﻿' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -823,7 +897,9 @@ function importCSV(text, merge) {
   const col = n => head.indexOf(n);
   const iDex = col('dex');
   if (iDex < 0) throw new Error(t('noDexCol'));
-  const iOwned = col('owned'), iCard = col('card_id'), iSet = col('set_id'), iNum = col('card_number'), iVar = col('variant'), iAdded = col('added');
+  const iOwned = col('owned'), iCard = col('card_id'), iSet = col('set_id'), iNum = col('card_number'), iVar = col('variant'), iAdded = col('added'), iWish = col('wishlist');
+  const wish = merge ? structuredClone(S.store.wish) : [];
+  let nWish = 0;
   const owned = merge ? structuredClone(S.store.owned) : {};
   const other = merge ? structuredClone(S.store.other) : [];
   // przy łączeniu nie dubluj kart, które już są zapisane (liczone per karta+wariant; dex 0 = trener/energia)
@@ -838,6 +914,20 @@ function importCSV(text, merge) {
   for (const r of rows.slice(1)) {
     const dex = parseInt(r[iDex], 10) || 0;
     if (dex && !S.byId.has(dex)) continue;
+    // wiersz listy życzeń
+    if (iWish >= 0 && ['1', 'true', 'tak', 'yes'].includes(String(r[iWish] ?? '').trim().toLowerCase())) {
+      let wid = iCard >= 0 ? (r[iCard] || '').trim() : '';
+      if (!wid && iSet >= 0 && iNum >= 0 && r[iSet] && r[iNum]) {
+        const sid = r[iSet].trim(), nn = normNum(r[iNum].split('/')[0]);
+        wid = (S.cardsBySet.get(sid) || []).find(c => c.nn === nn)?.id || '';
+      }
+      if (wid && S.cardById.has(wid) && !wish.some(w => w.id === wid)) {
+        const tw = iAdded >= 0 && r[iAdded] ? Date.parse(r[iAdded]) : NaN;
+        wish.push({ id: wid, t: isNaN(tw) ? Date.now() : tw });
+        nWish++;
+      }
+      continue;
+    }
     const ownedVal = iOwned >= 0 ? String(r[iOwned] ?? '').trim().toLowerCase() : '1';
     if (['0', 'false', 'nie', 'no', ''].includes(ownedVal)) continue;
     if (!dex) {
@@ -882,8 +972,9 @@ function importCSV(text, merge) {
   }
   S.store.owned = owned;
   S.store.other = other;
+  S.store.wish = wish;
   saveStore();
-  return { nPk, nCards };
+  return { nPk, nCards, nWish };
 }
 
 // ===== UI: drobiazgi =====
@@ -925,6 +1016,8 @@ function updateDataInfo() {
 let swVersion = null;
 function renderVersion() {
   $('#appVersion').textContent = t('version', APP_VERSION, APP_DATE);
+  $('#aboutAuthor').innerHTML = t('aboutAuthor');
+  $('#aboutLegal').textContent = t('aboutLegal');
   $('#setVersion').textContent = 'v' + APP_VERSION;
   $('#swVersion').textContent = swVersion ? t('swVersion', swVersion) : t('swNone');
 }
@@ -990,6 +1083,7 @@ function bindEvents() {
     clearTimeout(qTimer);
     qTimer = setTimeout(() => {
       if (setting('view') === 'sets') { S.setsQ = q.value; renderGrid(); }
+      else if (setting('view') === 'wish') { S.wishQ = q.value; renderGrid(); }
       else if (isAlbum()) { S.albumQ = q.value; albumJump(q.value); }
       else setF('q', q.value);
     }, 200);
@@ -1005,6 +1099,7 @@ function bindEvents() {
     q.value = '';
     $('#qClear').hidden = true;
     if (setting('view') === 'sets') { S.setsQ = ''; renderGrid(); }
+    else if (setting('view') === 'wish') { S.wishQ = ''; renderGrid(); }
     else if (isAlbum()) { S.albumQ = ''; S.albumHit = -1; }
     else setF('q', '');
     q.focus();
@@ -1129,10 +1224,10 @@ function bindEvents() {
     if (e.target === e.currentTarget || e.target.closest('[data-close]')) { e.currentTarget.close(); return; }
     const btn = e.target.closest('#dlgAdd');
     if (btn) {
-      addCard(+btn.dataset.dex, btn.dataset.card, $('#variantSel').value);
+      const fromWish = addCard(+btn.dataset.dex, btn.dataset.card, $('#variantSel').value);
       e.currentTarget.close();
       afterCardChange();
-      toast(t('cardAdded'));
+      toast(fromWish ? t('cardAddedWish') : t('cardAdded'));
       if (typeof scannerAfterAdd === 'function') scannerAfterAdd();
       return;
     }
@@ -1149,6 +1244,7 @@ function bindEvents() {
   bindSets();
   bindScanner();
   bindPrices();
+  bindWish();
 
   // ustawienia
   const sd = $('#settingsDlg');
@@ -1185,9 +1281,9 @@ function bindEvents() {
     const merge = $('#importMerge').checked;
     if (!merge && Object.keys(S.store.owned).length && !confirm(t('importReplace'))) return;
     try {
-      const { nPk, nCards } = importCSV(await file.text(), merge);
+      const { nPk, nCards, nWish } = importCSV(await file.text(), merge);
       updateDataInfo(); renderGrid();
-      toast(t('importDone', nPk, nCards));
+      toast(t('importDone', nPk, nCards) + (nWish ? ` · ♥ ${nWish}` : ''));
     } catch (err) { alert(t('importError') + err.message); }
   });
   $('#resetBtn').addEventListener('click', () => {

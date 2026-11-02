@@ -10,7 +10,8 @@ Użycie:
 
 Wynik: data/pokemon.json oraz data/cards.json (kompaktowe tablice).
 
-Wiersz karty: [set_idx, numer, nazwa, rarity_idx, [subtype_idx], dex (0 = brak), supertype_idx, (id), (obrazek)]
+Wiersz karty: [set_idx, numer, nazwa, rarity_idx, [subtype_idx], dex (0 = brak), supertype_idx,
+               hp (0 = brak), [energy_type_idx], artist_idx (-1 = brak), regulation_mark ('' = brak), (id), (obrazek)]
 Zestaw: [id, nazwa, seria, printedTotal, data, kod, symbol_url, logo_url]
 """
 import csv
@@ -90,7 +91,7 @@ def build_cards():
     with ThreadPoolExecutor(12) as ex:
         loaded = list(ex.map(get, sets))
 
-    rarities, subtypes, supertypes = [], [], []
+    rarities, subtypes, supertypes, etypes, artists = [], [], [], [], []
     def idx(lst, v):
         if v not in lst:
             lst.append(v)
@@ -115,13 +116,18 @@ def build_cards():
                 [idx(subtypes, t) for t in c.get("subtypes", [])],
                 (dex if len(dex) > 1 else dex[0]) if dex else 0,
                 idx(supertypes, c.get("supertype") or ""),
+                int(c["hp"]) if str(c.get("hp", "")).isdigit() else 0,
+                [idx(etypes, t) for t in c.get("types", [])],
+                idx(artists, c["artist"]) if c.get("artist") else -1,
+                c.get("regulationMark") or "",
             ]
             cid = c["id"] if c["id"] != f"{s['id']}-{num}" else 0
             img = small if small and small != std else 0
             if cid or img:
                 row += [cid, img]
             out_cards.append(row)
-    return {"sets": out_sets, "rarities": rarities, "subtypes": subtypes, "supertypes": supertypes, "cards": out_cards}
+    return {"sets": out_sets, "rarities": rarities, "subtypes": subtypes, "supertypes": supertypes,
+            "etypes": etypes, "artists": artists, "cards": out_cards}
 
 
 def main():
