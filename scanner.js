@@ -191,8 +191,11 @@ async function listCameras() {
   try { return (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput'); }
   catch { return []; }
 }
+const CAM_FRONT = /front|przedni|przód|facetime|vorder|avant|frontal/i;
+const ZOOMS = [1, 1.5, 2, 2.5];
 async function openStream(camId) {
-  const size = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+  // wysoka rozdzielczość: przy powiększeniu (zwłaszcza cyfrowym) karta ma więcej pikseli do OCR
+  const size = { width: { ideal: 3840 }, height: { ideal: 2160 } };
   return navigator.mediaDevices.getUserMedia({
     video: camId ? { deviceId: { exact: camId }, ...size } : { facingMode: { ideal: 'environment' }, ...size }, audio: false,
   });
@@ -210,7 +213,7 @@ async function startCamera() {
       SCAN.stream = await openStream('');
     }
     // etykiety aparatów są dostępne dopiero po udzieleniu zgody
-    SCAN.cams = await listCameras();
+    SCAN.cams = (await listCameras()).filter(d => !CAM_FRONT.test(d.label));
     const track = SCAN.stream.getVideoTracks()[0];
     if (!saved && track && CAM_VIRTUAL.test(track.label)) {
       const plain = SCAN.cams.find(d => CAM_PLAIN.test(d.label.trim()));
@@ -224,6 +227,8 @@ async function startCamera() {
     tr?.applyConstraints?.({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
     $('#scanCam').hidden = SCAN.cams.length < 2;
     video.srcObject = SCAN.stream;
+    SCAN.zoomBase = null;
+    applyZoom(+setting('camZoom') || 1);
     await video.play().catch(() => {});
     scanHint(t('scanHint'));
   } catch (e) {
@@ -232,7 +237,7 @@ async function startCamera() {
   }
 }
 async function switchCamera() {
-  if (!SCAN.cams.length) SCAN.cams = await listCameras();
+  if (!SCAN.cams.length) SCAN.cams = (await listCameras()).filter(d => !CAM_FRONT.test(d.label));
   if (SCAN.cams.length < 2) return;
   const curId = SCAN.stream?.getVideoTracks()[0]?.getSettings?.().deviceId;
   const i = SCAN.cams.findIndex(d => d.deviceId === curId);
@@ -246,6 +251,29 @@ async function switchCamera() {
 function noCamera() {
   $('#scanShot').disabled = true;
   scanHint(t('scanNoCamera'));
+}
+// Powiększenie: natywne (zoom aparatu), a gdy przeglądarka go nie daje — cyfrowe (powiększony podgląd).
+// Telefon trzymany dalej (~25–30 cm) + 2× = iPhone nie przełącza się na obiektyw makro.
+function applyZoom(z) {
+  const video = $('#scanVideo');
+  const tr = SCAN.stream?.getVideoTracks()[0];
+  const caps = tr?.getCapabilities?.() || {};
+  if (caps.zoom && caps.zoom.max > caps.zoom.min) {
+    if (SCAN.zoomBase == null) SCAN.zoomBase = tr.getSettings?.().zoom || caps.zoom.min || 1;
+    const target = Math.min(caps.zoom.max, Math.max(caps.zoom.min, SCAN.zoomBase * z));
+    tr.applyConstraints({ advanced: [{ zoom: target }] }).catch(() => {});
+    video.style.transform = '';
+  } else {
+    video.style.transform = z > 1 ? `scale(${z})` : '';
+  }
+  SCAN.zoom = z;
+  $('#scanZoom').textContent = `${String(z).replace('.', LANG === 'pl' ? ',' : '.')}×`;
+}
+function cycleZoom() {
+  const i = ZOOMS.indexOf(SCAN.zoom || 1);
+  const z = ZOOMS[(i + 1) % ZOOMS.length];
+  S.store.settings.camZoom = z; saveStore();
+  applyZoom(z);
 }
 function stopCamera() {
   if (SCAN.stream) SCAN.stream.getTracks().forEach(tr => tr.stop());
@@ -397,6 +425,7 @@ function bindScanner() {
     if (e.key === 'Escape' && !$('#scanner').hidden && !document.querySelector('dialog[open]')) closeScanner();
   });
   $('#scanCam').addEventListener('click', () => switchCamera());
+  $('#scanZoom').addEventListener('click', () => cycleZoom());
   $('#scanShot').addEventListener('click', () => {
     const card = captureFromVideo();
     if (card) runScan(card);

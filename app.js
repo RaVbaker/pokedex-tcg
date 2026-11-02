@@ -89,13 +89,15 @@ const I18N = {
     secret: (h, n) => `+ sekretne ${h}/${n}`, complete: 'Komplet!', setCards: 'Karty w zestawie',
     showAll: 'Wszystkie', showMissing: 'Brakuje', showOwned: 'Mam', back: 'Wstecz',
     removeOne: 'Usuń 1 egz.', cardRemoved: 'Usunięto kartę', addMore: 'Dodaj kolejny',
-    scan: 'Skanuj kartę', scanHint: 'Włóż kartę w ramkę (ok. 15–20 cm od aparatu). Unikaj odblasków.', scanCapture: 'Zrób zdjęcie',
+    scan: 'Skanuj kartę', scanHint: 'Włóż kartę w ramkę. Gdy obraz przeskakuje — odsuń telefon (~25–30 cm) i ustaw 2× (przycisk u góry). Unikaj odblasków.', scanZoom: 'Powiększenie', scanCapture: 'Zrób zdjęcie',
     scanPhoto: 'Zdjęcie', scanLoading: 'Ładowanie OCR (pierwszy raz ~10 MB)…', scanReading: 'Odczytuję tekst…',
     scanNoCamera: 'Brak dostępu do kamery — wybierz zdjęcie karty.', scanName: 'Nazwa', scanNumber: 'Numer (np. 25/165)',
     scanSearch: 'Szukaj', scanAgain: 'Skanuj ponownie', scanNone: 'Nie rozpoznano karty. Popraw nazwę lub numer i wyszukaj.',
     scanCandidates: n => `Pasujące karty (${n})`, scanResultTitle: 'Wynik skanu', scanCamera: 'Aparat', scanCamUsing: l => `Aparat: ${l}`, scanAllOf: n => `Wszystkie karty: ${n}`, scanError: 'Błąd OCR: ',
     pwSec: 'Ceny kart (PokéWallet)',
-    pwHint: 'Ceny z Cardmarket (EUR) i TCGplayer (USD) przez <a href="https://pokewallet.io" target="_blank" rel="noopener">PokéWallet API</a>. Załóż konto, skopiuj klucz API (<code>pk_live_…</code>) i wklej poniżej. Klucz zostaje tylko w tej przeglądarce i nie trafia do eksportu CSV. Darmowy plan ma limit ok. 100 zapytań na godzinę — ceny są zapamiętywane na 24 h.',
+    pwHint: 'Ceny z Cardmarket (EUR) i TCGplayer (USD) przez <a href="https://pokewallet.io" target="_blank" rel="noopener">PokéWallet API</a>. Załóż konto, skopiuj klucz API (<code>pk_live_…</code>) i wklej poniżej. Klucz zostaje tylko w tej przeglądarce i nie trafia do eksportu CSV. Darmowy plan ma limit ok. 100 zapytań na godzinę. Pobrane ceny są zapisywane w tej przeglądarce razem z datą i nie są pobierane ponownie, dopóki nie miną ustawionej ważności — „Wyceń kolekcję” dociąga tylko brakujące i przeterminowane.',
+    pwTtl: 'Zapisane ceny ważne przez', pwTtl1: '1 dzień', pwTtl7: '7 dni', pwTtl30: '30 dni', pwTtl0: 'Bez wygasania (tylko ręczne „Odśwież”)',
+    pwDates: (a, b) => (a === b ? `Ceny z: ${a}.` : `Ceny z: ${a} – ${b}.`),
     pwKey: 'Klucz API', pwSaveTest: 'Zapisz i sprawdź', pwRemove: 'Usuń klucz', pwSource: 'Główne źródło cen',
     pwValueBtn: 'Wyceń kolekcję', pwCacheClear: 'Wyczyść zapisane ceny', pwShowKey: 'Pokaż klucz',
     pwNoKey: 'Brak klucza API PokéWallet (⚙︎ → Ceny kart).', pwSetKeyHint: 'Ceny: dodaj klucz API PokéWallet w ⚙︎ → Ceny kart.',
@@ -166,13 +168,15 @@ const I18N = {
     secret: (h, n) => `+ secret ${h}/${n}`, complete: 'Complete!', setCards: 'Cards in set',
     showAll: 'All', showMissing: 'Missing', showOwned: 'Owned', back: 'Back',
     removeOne: 'Remove 1 copy', cardRemoved: 'Card removed', addMore: 'Add another',
-    scan: 'Scan card', scanHint: 'Fit the card in the frame (about 15–20 cm away). Avoid glare.', scanCapture: 'Capture',
+    scan: 'Scan card', scanHint: 'Fit the card in the frame. If the image jumps — move the phone back (~25–30 cm) and set 2× (button at the top). Avoid glare.', scanZoom: 'Zoom', scanCapture: 'Capture',
     scanPhoto: 'Photo', scanLoading: 'Loading OCR (first time ~10 MB)…', scanReading: 'Reading text…',
     scanNoCamera: 'No camera access — pick a photo of the card.', scanName: 'Name', scanNumber: 'Number (e.g. 25/165)',
     scanSearch: 'Search', scanAgain: 'Scan again', scanNone: 'No card recognized. Fix the name or number and search.',
     scanCandidates: n => `Matching cards (${n})`, scanResultTitle: 'Scan result', scanCamera: 'Camera', scanCamUsing: l => `Camera: ${l}`, scanAllOf: n => `All cards: ${n}`, scanError: 'OCR error: ',
     pwSec: 'Card prices (PokéWallet)',
-    pwHint: 'Cardmarket (EUR) and TCGplayer (USD) prices via the <a href="https://pokewallet.io" target="_blank" rel="noopener">PokéWallet API</a>. Create an account, copy your API key (<code>pk_live_…</code>) and paste it below. The key stays in this browser only and is not included in CSV export. The free plan allows about 100 requests per hour — prices are remembered for 24 h.',
+    pwHint: 'Cardmarket (EUR) and TCGplayer (USD) prices via the <a href="https://pokewallet.io" target="_blank" rel="noopener">PokéWallet API</a>. Create an account, copy your API key (<code>pk_live_…</code>) and paste it below. The key stays in this browser only and is not included in CSV export. The free plan allows about 100 requests per hour. Fetched prices are saved in this browser with their date and are not fetched again until they expire — “Value my collection” only fetches missing and expired ones.',
+    pwTtl: 'Saved prices valid for', pwTtl1: '1 day', pwTtl7: '7 days', pwTtl30: '30 days', pwTtl0: 'Never expire (manual “Refresh” only)',
+    pwDates: (a, b) => (a === b ? `Prices from: ${a}.` : `Prices from: ${a} – ${b}.`),
     pwKey: 'API key', pwSaveTest: 'Save & test', pwRemove: 'Remove key', pwSource: 'Main price source',
     pwValueBtn: 'Value my collection', pwCacheClear: 'Clear saved prices', pwShowKey: 'Show key',
     pwNoKey: 'No PokéWallet API key (⚙︎ → Card prices).', pwSetKeyHint: 'Prices: add a PokéWallet API key in ⚙︎ → Card prices.',
@@ -205,7 +209,7 @@ const S = {
   store: { owned: {}, settings: {}, filters: {}, other: [] },
   albumQ: '', albumHit: -1, setsQ: '', cardsBySet: new Map(), ownedIdx: null,
 };
-const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', priceSrc: 'cm', camId: '' };
+const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', priceSrc: 'cm', camId: '', camZoom: 1, pwTtl: 7 };
 
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -750,7 +754,13 @@ function setupSwipe() {
 }
 
 // ===== CSV =====
-const CSV_HEAD = ['dex', 'name', 'owned', 'card_id', 'set_id', 'set_name', 'series', 'card_number', 'set_total', 'rarity', 'card_name', 'variant', 'album_page', 'album_slot', 'added'];
+const CSV_HEAD = ['dex', 'name', 'owned', 'card_id', 'set_id', 'set_name', 'series', 'card_number', 'set_total', 'rarity', 'card_name', 'variant', 'album_page', 'album_slot', 'added', 'price', 'currency', 'price_date'];
+// cena z zapisanych (bez zapytań do API): [kwota, waluta, data]
+function csvPrice(cardId, variant) {
+  const v = typeof cardValue === 'function' ? cardValue(cardId, variant) : null;
+  const at = typeof priceCache === 'function' ? priceCache()[cardId]?.at : null;
+  return v ? [v.value.toFixed(2), v.cur, at ? new Date(at).toISOString().slice(0, 10) : ''] : ['', '', ''];
+}
 function csvCell(v) {
   const s = String(v ?? '');
   return /[",;\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
@@ -765,7 +775,7 @@ function exportCSV() {
     if (o && o.cards.length) {
       for (const oc of o.cards) {
         const c = S.cardById.get(oc.id);
-        lines.push([...base, oc.id, c?.set.id, c?.set.name, c?.set.series, c?.num, c?.set.total, c?.rarity, c?.name, oc.v, page, slot, added].map(csvCell).join(','));
+        lines.push([...base, oc.id, c?.set.id, c?.set.name, c?.set.series, c?.num, c?.set.total, c?.rarity, c?.name, oc.v, page, slot, added, ...csvPrice(oc.id, oc.v)].map(csvCell).join(','));
       }
     } else {
       lines.push([...base, '', '', '', '', '', '', '', '', '', page, slot, added].map(csvCell).join(','));
@@ -774,7 +784,7 @@ function exportCSV() {
   for (const oc of S.store.other) {
     const c = S.cardById.get(oc.id);
     const added = oc.t ? new Date(oc.t).toISOString().slice(0, 10) : '';
-    lines.push([0, c?.name || '', 1, oc.id, c?.set.id, c?.set.name, c?.set.series, c?.num, c?.set.total, c?.rarity, c?.name, oc.v, '', '', added].map(csvCell).join(','));
+    lines.push([0, c?.name || '', 1, oc.id, c?.set.id, c?.set.name, c?.set.series, c?.num, c?.set.total, c?.rarity, c?.name, oc.v, '', '', added, ...csvPrice(oc.id, oc.v)].map(csvCell).join(','));
   }
   const blob = new Blob(['﻿' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');

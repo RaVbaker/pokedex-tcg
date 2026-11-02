@@ -1,7 +1,8 @@
 /* Pokédex TCG — ceny kart z PokéWallet API (https://pokewallet.io).
  * API: https://api.pokewallet.io, nagłówek X-API-Key (klucz użytkownika, trzymany tylko w localStorage).
  * Ceny pochodzą z wyszukiwania (/search) i szczegółów karty (/cards/{id}) — oba dostępne w darmowym planie.
- * Wyniki są zapisywane lokalnie na 24 h, żeby oszczędzać limit (~100 zapytań/h).
+ * Wyniki są zapisywane w przeglądarce (localStorage) razem z datą pobrania; ważność ustawia się w ⚙︎
+ * (domyślnie 7 dni). Wycena kolekcji pobiera najpierw karty bez ceny, potem te z przeterminowaną.
  */
 'use strict';
 
@@ -9,7 +10,6 @@ const PW = {
   base: 'https://api.pokewallet.io',
   keyLS: 'pokedex-tcg:pwkey',
   cacheLS: 'pokedex-tcg:prices',
-  TTL: 24 * 3600e3,
   BATCH: 30,
   cache: null,
   queue: Promise.resolve(),
@@ -32,6 +32,11 @@ function savePriceCache() {
   try { localStorage.setItem(PW.cacheLS, JSON.stringify(PW.cache || {})); } catch { /* pełny storage */ }
 }
 const priceSource = () => setting('priceSrc') || 'cm';
+// jak długo zapisana cena jest „świeża” (dni z ustawień; 0 = bez wygasania)
+function pwTtlMs() {
+  const d = +setting('pwTtl');
+  return d === 0 ? Infinity : (d || 7) * 24 * 3600e3;
+}
 
 // ===== HTTP =====
 class PwError extends Error {
@@ -126,7 +131,7 @@ function pwPick(card, results) {
 async function getPrice(card, { force = false } = {}) {
   const cache = priceCache();
   const c = cache[card.id];
-  if (c && !force && Date.now() - c.at < PW.TTL) return c;
+  if (c && !force && Date.now() - c.at < pwTtlMs()) return c;
   let entry = null;
   if (c?.pw?.id) {
     try { entry = pwTrim(await pwGet(`/cards/${encodeURIComponent(c.pw.id)}`)); }
@@ -223,7 +228,7 @@ async function renderPriceBox(card, force = false) {
   if (!box || box.dataset.card !== card.id) return;
   if (!pwKey()) { box.innerHTML = `<p class="muted small">${t('pwSetKeyHint')}</p>`; return; }
   const cached = priceCache()[card.id];
-  const fresh = cached && Date.now() - cached.at < PW.TTL;
+  const fresh = cached && Date.now() - cached.at < pwTtlMs();
   box.innerHTML = cached ? priceBoxHTML(card, cached) : `<p class="muted small">${t('pwLoading')}</p>`;
   if (fresh && !force) return;
   try {
@@ -240,16 +245,25 @@ async function renderPriceBox(card, force = false) {
 function quotaText() {
   return PW.quota && (PW.quota.hour != null || PW.quota.day != null) ? ' ' + t('pwQuota', PW.quota.hour ?? '?', PW.quota.day ?? '?') : '';
 }
+function fmtDate(ts) {
+  return new Date(ts).toLocaleDateString(LANG === 'pl' ? 'pl-PL' : 'en-US', { dateStyle: 'medium' });
+}
 function renderValueStatus(extra = '') {
   const copies = allOwnedCopies();
   const { sum, priced, cur } = valueOfCopies(copies);
   const stale = pendingCards().length;
-  $('#pwStatus').textContent = (copies.length ? t('pwValue', fmtMoney(sum, cur), priced, copies.length, stale) : '') + quotaText() + (extra ? ' ' + extra : '');
-}
-function pendingCards() {
   const cache = priceCache();
-  const ids = [...new Set(allOwnedCopies().map(c => c.id))];
-  return ids.filter(id => S.cardById.has(id) && !(cache[id] && Date.now() - cache[id].at < PW.TTL));
+  const dates = [...new Set(copies.map(c => c.id))].map(id => cache[id]?.at).filter(Boolean);
+  const range = dates.length ? ' ' + t('pwDates', fmtDate(Math.min(...dates)), fmtDate(Math.max(...dates))) : '';
+  $('#pwStatus').textContent = (copies.length ? t('pwValue', fmtMoney(sum, cur), priced, copies.length, stale) + range : '') + quotaText() + (extra ? ' ' + extra : '');
+}
+// karty do wyceny: najpierw bez żadnej ceny, potem z ceną starszą niż ustawiona ważność
+function pendingCards() {
+  const cache = priceCache(), ttl = pwTtlMs(), now = Date.now();
+  const ids = [...new Set(allOwnedCopies().map(c => c.id))].filter(id => S.cardById.has(id));
+  const missing = ids.filter(id => !cache[id]);
+  const stale = ids.filter(id => cache[id] && now - cache[id].at >= ttl).sort((a, b) => cache[a].at - cache[b].at);
+  return [...missing, ...stale];
 }
 async function valueCollection() {
   if (PW.valuing) return;
@@ -276,6 +290,7 @@ function bindPrices() {
     $('#pwKey').value = pwKey();
     $('#pwKey').type = 'password';
     $('#pwSrc').value = priceSource();
+    $('#pwTtl').value = String(setting('pwTtl') ?? 7);
     $('#pwHint').innerHTML = t('pwHint');
     renderValueStatus();
   });
@@ -295,6 +310,7 @@ function bindPrices() {
   $('#pwClear').addEventListener('click', () => { pwStoreKey(''); $('#pwKey').value = ''; $('#pwStatus').textContent = t('pwKeyRemoved'); });
   $('#pwSrc').addEventListener('change', e => { S.store.settings.priceSrc = e.target.value; saveStore(); renderValueStatus(); });
   $('#pwValue').addEventListener('click', valueCollection);
+  $('#pwTtl').addEventListener('change', e => { S.store.settings.pwTtl = +e.target.value; saveStore(); renderValueStatus(); });
   $('#pwCacheClear').addEventListener('click', () => { PW.cache = {}; savePriceCache(); renderValueStatus(t('pwCacheCleared')); });
   // przycisk „Odśwież” w oknie karty
   $('#cardDlg').addEventListener('click', e => {

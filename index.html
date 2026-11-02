@@ -140,6 +140,7 @@
       <button class="icon-btn" id="scanClose" data-i18n-aria="close">
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4 6.4 5Z"/></svg>
       </button>
+      <button class="zoom-btn" id="scanZoom" type="button" data-i18n-aria="scanZoom">1×</button>
     </div>
     <div class="scan-controls" id="scanControls">
       <label class="scan-side">
@@ -223,6 +224,14 @@
           <button class="btn small" id="pwSave" data-i18n="pwSaveTest">Zapisz i sprawdź</button>
           <button class="btn ghost small" id="pwClear" data-i18n="pwRemove">Usuń klucz</button>
         </div>
+        <label class="row"><span data-i18n="pwTtl">Ceny ważne przez</span>
+          <select id="pwTtl">
+            <option value="1" data-i18n="pwTtl1">1 dzień</option>
+            <option value="7" data-i18n="pwTtl7">7 dni</option>
+            <option value="30" data-i18n="pwTtl30">30 dni</option>
+            <option value="0" data-i18n="pwTtl0">Bez wygasania (tylko ręczne „Odśwież”)</option>
+          </select>
+        </label>
         <label class="row"><span data-i18n="pwSource">Główne źródło cen</span>
           <select id="pwSrc">
             <option value="cm">Cardmarket (EUR)</option>

@@ -484,3 +484,11 @@ button.scan-side { border: 0; background: transparent; color: #fff; padding: 0; 
 /* Wersja aplikacji */
 .ver-badge { font-size: 12px; font-weight: 700; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 1px 6px; vertical-align: middle; }
 .ver-line { margin: 4px 0 8px; }
+
+/* Skaner: powiększenie */
+.scan-top { right: 12px; display: flex; justify-content: space-between; align-items: center; }
+.zoom-btn {
+  min-width: 52px; height: 40px; border-radius: 20px; border: 2px solid #ffd23f; background: rgb(0 0 0 / .5);
+  color: #ffd23f; font-weight: 800; font-size: 16px; padding: 0 12px;
+}
+.scan-stage video { transition: transform .2s ease; }
