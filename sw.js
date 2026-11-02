@@ -1,5 +1,5 @@
 /* Service worker: offline dla aplikacji i danych, cache obrazków stworków. */
-const VERSION = 'v4';
+const VERSION = 'v5';
 const SHELL = `pokedex-shell-${VERSION}`;
 const IMG = 'pokedex-img-v1';
 const ASSETS = [

@@ -83,11 +83,11 @@ const I18N = {
     secret: (h, n) => `+ sekretne ${h}/${n}`, complete: 'Komplet!', setCards: 'Karty w zestawie',
     showAll: 'Wszystkie', showMissing: 'Brakuje', showOwned: 'Mam', back: 'Wstecz',
     removeOne: 'Usuń 1 egz.', cardRemoved: 'Usunięto kartę', addMore: 'Dodaj kolejny',
-    scan: 'Skanuj kartę', scanHint: 'Włóż kartę w ramkę. Unikaj odblasków.', scanCapture: 'Zrób zdjęcie',
+    scan: 'Skanuj kartę', scanHint: 'Włóż kartę w ramkę (ok. 15–20 cm od aparatu). Unikaj odblasków.', scanCapture: 'Zrób zdjęcie',
     scanPhoto: 'Zdjęcie', scanLoading: 'Ładowanie OCR (pierwszy raz ~10 MB)…', scanReading: 'Odczytuję tekst…',
     scanNoCamera: 'Brak dostępu do kamery — wybierz zdjęcie karty.', scanName: 'Nazwa', scanNumber: 'Numer (np. 25/165)',
     scanSearch: 'Szukaj', scanAgain: 'Skanuj ponownie', scanNone: 'Nie rozpoznano karty. Popraw nazwę lub numer i wyszukaj.',
-    scanCandidates: n => `Pasujące karty (${n})`, scanAllOf: n => `Wszystkie karty: ${n}`, scanError: 'Błąd OCR: ',
+    scanCandidates: n => `Pasujące karty (${n})`, scanResultTitle: 'Wynik skanu', scanCamera: 'Aparat', scanCamUsing: l => `Aparat: ${l}`, scanAllOf: n => `Wszystkie karty: ${n}`, scanError: 'Błąd OCR: ',
     pwSec: 'Ceny kart (PokéWallet)',
     pwHint: 'Ceny z Cardmarket (EUR) i TCGplayer (USD) przez <a href="https://pokewallet.io" target="_blank" rel="noopener">PokéWallet API</a>. Załóż konto, skopiuj klucz API (<code>pk_live_…</code>) i wklej poniżej. Klucz zostaje tylko w tej przeglądarce i nie trafia do eksportu CSV. Darmowy plan ma limit ok. 100 zapytań na godzinę — ceny są zapamiętywane na 24 h.',
     pwKey: 'Klucz API', pwSaveTest: 'Zapisz i sprawdź', pwRemove: 'Usuń klucz', pwSource: 'Główne źródło cen',
@@ -157,11 +157,11 @@ const I18N = {
     secret: (h, n) => `+ secret ${h}/${n}`, complete: 'Complete!', setCards: 'Cards in set',
     showAll: 'All', showMissing: 'Missing', showOwned: 'Owned', back: 'Back',
     removeOne: 'Remove 1 copy', cardRemoved: 'Card removed', addMore: 'Add another',
-    scan: 'Scan card', scanHint: 'Fit the card in the frame. Avoid glare.', scanCapture: 'Capture',
+    scan: 'Scan card', scanHint: 'Fit the card in the frame (about 15–20 cm away). Avoid glare.', scanCapture: 'Capture',
     scanPhoto: 'Photo', scanLoading: 'Loading OCR (first time ~10 MB)…', scanReading: 'Reading text…',
     scanNoCamera: 'No camera access — pick a photo of the card.', scanName: 'Name', scanNumber: 'Number (e.g. 25/165)',
     scanSearch: 'Search', scanAgain: 'Scan again', scanNone: 'No card recognized. Fix the name or number and search.',
-    scanCandidates: n => `Matching cards (${n})`, scanAllOf: n => `All cards: ${n}`, scanError: 'OCR error: ',
+    scanCandidates: n => `Matching cards (${n})`, scanResultTitle: 'Scan result', scanCamera: 'Camera', scanCamUsing: l => `Camera: ${l}`, scanAllOf: n => `All cards: ${n}`, scanError: 'OCR error: ',
     pwSec: 'Card prices (PokéWallet)',
     pwHint: 'Cardmarket (EUR) and TCGplayer (USD) prices via the <a href="https://pokewallet.io" target="_blank" rel="noopener">PokéWallet API</a>. Create an account, copy your API key (<code>pk_live_…</code>) and paste it below. The key stays in this browser only and is not included in CSV export. The free plan allows about 100 requests per hour — prices are remembered for 24 h.',
     pwKey: 'API key', pwSaveTest: 'Save & test', pwRemove: 'Remove key', pwSource: 'Main price source',
@@ -196,7 +196,7 @@ const S = {
   store: { owned: {}, settings: {}, filters: {}, other: [] },
   albumQ: '', albumHit: -1, setsQ: '', cardsBySet: new Map(), ownedIdx: null,
 };
-const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', priceSrc: 'cm' };
+const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', priceSrc: 'cm', camId: '' };
 
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

@@ -148,7 +148,10 @@
         <input type="file" id="scanFile" accept="image/*">
       </label>
       <button class="shutter" id="scanShot" data-i18n-aria="scanCapture"><span></span></button>
-      <span class="scan-side"></span>
+      <button class="scan-side" id="scanCam" type="button" hidden>
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M9 3 7.2 5H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.2L15 3H9Zm3 5a5 5 0 0 1 4.6 3H19l-3 3-3-3h1.4A3 3 0 0 0 9.4 12.5l-1.6-1.2A5 5 0 0 1 12 8Zm-3 5 3 3H10.6a3 3 0 0 0 5-1.5l1.6 1.2A5 5 0 0 1 7.4 16H5l3-3Z"/></svg>
+        <span data-i18n="scanCamera">Aparat</span>
+      </button>
     </div>
     <div class="scan-result" id="scanResult" hidden></div>
   </div>
