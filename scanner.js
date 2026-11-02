@@ -353,7 +353,7 @@ async function runScan(card, full = null) {
     SCAN.busy = 'reading';
     scanHint(t('scanReading'));
     const W = card.width, H = card.height;
-    // pasy z zapasem — kadr z ręki rzadko jest idealnie wyrównany
+    // pasy z zapasem — kadr z ręki rzadko jest idealnie wyrównany (zgodne z żółtymi pasami .zone w styles.css)
     const nameText = await ocr(regionCanvas(card, W * 0.02, H * 0.005, W * 0.82, H * 0.135, 1.6), 11);
     const numText = await ocr(regionCanvas(card, 0, H * 0.83, W, H * 0.17, 2.0), 11, '0123456789/ABCDEFGHIJKLMNOPQRSTUVWXYZ');
     let nums = parseNumbers(numText);

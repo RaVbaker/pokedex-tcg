@@ -133,7 +133,10 @@
   <div class="scanner" id="scanner" hidden aria-modal="true" role="dialog" data-i18n-aria="scan">
     <div class="scan-stage" id="scanStage">
       <video id="scanVideo" playsinline muted autoplay></video>
-      <div class="scan-frame" id="scanFrame"><span></span></div>
+      <div class="scan-frame" id="scanFrame">
+        <span class="zone top" data-i18n="scanZoneName">Nazwa</span>
+        <span class="zone bottom" data-i18n="scanZoneNum">Numer</span>
+      </div>
       <p class="scan-hint" id="scanHint" data-i18n="scanHint"></p>
     </div>
     <div class="scan-top">
