@@ -6,7 +6,7 @@
 
 // ===== Stałe =====
 // Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
-const APP_VERSION = '8';
+const APP_VERSION = '9';
 const APP_DATE = '2026-11-02';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;

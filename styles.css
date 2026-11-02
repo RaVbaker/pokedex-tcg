@@ -549,8 +549,17 @@ button.scan-side { border: 0; background: transparent; color: #fff; padding: 0; 
 .hp-ok { color: var(--ok); font-weight: 700; }
 
 /* Lista życzeń w widoku zestawu: inaczej niż brakujące — lekko przygaszone, różowa obwódka i serduszko */
-.scard.wish:not(.have) { filter: grayscale(.35) saturate(.85); opacity: .9; box-shadow: 0 0 0 3px #e0457b, 0 1px 3px rgb(0 0 0 / .2); background: #fde7ef; }
+.scard.wish:not(.have) { filter: grayscale(.3); opacity: 1; box-shadow: 0 0 0 3px #e0457b, 0 1px 3px rgb(0 0 0 / .2); background: #fde7ef; }
 .scard.wish .scard-fb { color: #a3245a; }
+/* różowa nakładka NAD obrazkiem karty (tło byłoby przykryte przez obrazek) */
+.scard.wish:not(.have)::after {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(180deg, rgb(224 69 123 / .18), rgb(224 69 123 / .38));
+}
+.scard .scard-no, .scard .scard-check, .scard .scard-wish, .scard .price-tag { z-index: 2; }
+
+/* Zakładka „Życzenia”: karty w pełnych kolorach (bez szarości brakujących kart z widoku zestawu) */
+.wish-cards .scard, .wish-cards .scard:not(.have) { filter: none; opacity: 1; }
 
 /* Serduszko w nagłówku okna karty */
 .sheet-head h2 { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
