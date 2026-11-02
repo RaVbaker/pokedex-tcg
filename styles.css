@@ -475,3 +475,8 @@ body.album-mode .filter-btn, body.album-mode #filters { display: none !important
   border-radius: 6px; padding: 0 5px; vertical-align: middle; font-variant-numeric: tabular-nums;
 }
 .scard .price-tag { position: absolute; right: 4px; bottom: 4px; z-index: 2; }
+
+/* Skaner: przycisk aparatu i nagłówek wyników */
+button.scan-side { border: 0; background: transparent; color: #fff; padding: 0; font: inherit; font-size: 12px; }
+.scan-res-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.scan-res-head b { font-size: 16px; }

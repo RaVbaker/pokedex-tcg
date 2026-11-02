@@ -4,7 +4,7 @@
  */
 'use strict';
 
-const SCAN = { stream: null, worker: null, workerP: null, busy: false, read: null };
+const SCAN = { stream: null, worker: null, workerP: null, busy: false, read: null, cams: [] };
 const CARD_W = 1000, CARD_H = Math.round(1000 * 88 / 63);
 
 // ===== OCR: ładowanie =====
@@ -69,18 +69,23 @@ async function ocr(canvas, psm, whitelist = '') {
 }
 
 // ===== Parsowanie tekstu =====
-function parseNumber(text) {
+// Wszystkie numery z tekstu — niektóre karty mają dwa (np. 30th Celebration: „034/151” i „16/30”)
+function parseNumbers(text) {
   const T = String(text).toUpperCase().replace(/[|\\]/g, '/').replace(/[ \t]+/g, ' ');
+  const out = [], seen = new Set();
+  const add = o => { const k = `${o.num}/${o.total || ''}`; if (!seen.has(k)) { seen.add(k); out.push(o); } };
+  let m;
   // podzestawy z literami: TG05/TG30, GG12/GG70, SV045/SV122, RC5/RC32, H3/H32
-  let m = T.match(/(?:^|[^A-Z])(TG|GG|SV|RC|SH|H)(\d{1,3}) ?\/ ?(?:TG|GG|SV|RC|SH|H)?(\d{2,3})/);
-  if (m) return { num: m[1] + m[2], total: m[3] };
-  // zwykły numer: 025/165 (litery przed nim, np. „MEW EN”, są pomijane)
-  m = T.match(/(\d{1,3}) ?\/ ?(\d{2,3})/);
-  if (m) return { num: m[1], total: m[2] };
-  m = T.match(/\b(SWSH|SVP|SV|SM|XY|BW|DP|HGSS|NP)\s?(\d{1,3})\b/);
-  if (m) return { num: m[1] + m[2], promo: m[1], digits: m[2] };
-  return null;
+  const reSub = /(?:^|[^A-Z])(TG|GG|SV|RC|SH|H)(\d{1,3}) ?\/ ?(?:TG|GG|SV|RC|SH|H)?(\d{2,3})/g;
+  while ((m = reSub.exec(T))) add({ num: m[1] + m[2], total: m[3] });
+  // zwykłe numery: 025/165 (litery przed nimi, np. „MEW EN”, są pomijane)
+  const reNum = /(\d{1,3}) ?\/ ?(\d{2,3})/g;
+  while ((m = reNum.exec(T))) add({ num: m[1], total: m[2] });
+  const rePromo = /\b(SWSH|SVP|SV|SM|XY|BW|DP|HGSS|NP)\s?(\d{1,3})\b/g;
+  if (!out.length) while ((m = rePromo.exec(T))) add({ num: m[1] + m[2], promo: m[1], digits: m[2] });
+  return out;
 }
+const numsText = nums => nums.map(n => (n.total ? `${n.num}/${n.total}` : n.num)).join(' ');
 const cleanName = s => norm(s).replace(/[^a-z0-9' -]/g, ' ').replace(/\s+/g, ' ').trim();
 function lev(a, b) {
   if (a === b) return 0;
@@ -101,11 +106,14 @@ function nameSim(lines, name) {
   const tw = target.split(' ').length;
   let best = 0;
   for (const line of lines) {
-    if (line.includes(target)) return 1;
+    // bardzo krótkie nazwy (np. trener „N”) tylko przy dokładnym odczycie całej linii
+    if (target.length <= 2) { if (line === target) return 1; continue; }
+    if ((' ' + line + ' ').includes(' ' + target + ' ')) return 1;
     const words = line.split(' ').filter(Boolean);
     for (let len = Math.max(1, tw - 1); len <= tw + 1; len++) {
       for (let i = 0; i + len <= words.length; i++) {
         const cand = words.slice(i, i + len).join(' ');
+        if (cand.length < 3) continue;
         const sim = 1 - lev(cand, target) / Math.max(cand.length, target.length);
         if (sim > best) best = sim;
       }
@@ -114,6 +122,16 @@ function nameSim(lines, name) {
   return best;
 }
 const ocrLines = text => String(text).split(/\n+/).map(cleanName).filter(l => l.length >= 2);
+// do pola „Nazwa”: najbliższa nazwa stworka, a jak nic nie pasuje — najdłuższa linia z literami
+function guessName(lines) {
+  let best = '', bs = 0;
+  for (const pk of S.pokemon) {
+    const s = nameSim(lines, pk.name);
+    if (s > bs) { bs = s; best = pk.name; }
+  }
+  if (bs >= 0.6) return best;
+  return lines.filter(l => /[a-z]{3,}/.test(l)).sort((a, b) => b.length - a.length)[0] || '';
+}
 
 // ===== Dopasowanie do bazy =====
 let NAME_INDEX = null;
@@ -126,31 +144,37 @@ function nameIndex() {
   }
   return NAME_INDEX;
 }
-function matchCards(nameText, numInfo) {
+function matchCards(nameText, nums) {
   const lines = ocrLines(nameText);
-  let out = [];
-  if (numInfo) {
-    const nn = normNum(numInfo.num);
-    const total = numInfo.total ? parseInt(numInfo.total.replace(/^[A-Z]+/, ''), 10) : NaN;
-    let cands = S.cards.filter(c => c.nn === nn ||
-      (numInfo.promo && /promo/i.test(c.set.name) && normNum(c.num.replace(/^[a-z]+/i, '')) === normNum(numInfo.digits)));
-    out = cands.map(c => {
+  const byId = new Map();
+  for (const ni of nums || []) {
+    const nn = normNum(ni.num);
+    const total = ni.total ? parseInt(String(ni.total).replace(/^[A-Z]+/i, ''), 10) : NaN;
+    for (const c of S.cards) {
+      const hit = c.nn === nn ||
+        (ni.promo && /promo/i.test(c.set.name) && normNum(c.num.replace(/^[a-z]+/i, '')) === normNum(ni.digits));
+      if (!hit) continue;
       const totalOk = !isNaN(total) && c.set.total === total;
-      const sim = lines.length ? nameSim(lines, c.name) : 0;
-      return { c, score: (totalOk ? 2 : 0) + sim * 3, sim, totalOk };
-    }).filter(x => x.totalOk || x.sim >= 0.6 || !lines.length);
+      const prev = byId.get(c.id);
+      if (prev) prev.totalOk = prev.totalOk || totalOk; else byId.set(c.id, { c, totalOk });
+    }
   }
-  // bez numeru (albo nic nie pasuje): dopasuj samą nazwę
-  if (!out.length && lines.length) {
+  let out = [...byId.values()].map(x => {
+    const sim = lines.length ? nameSim(lines, x.c.name) : 0;
+    // numer + wielkość zestawu + nazwa razem = prawie pewne trafienie
+    return { ...x, sim, score: (x.totalOk ? 2 : 0) + sim * 3 + (x.totalOk && sim >= 0.8 ? 1 : 0) };
+  }).filter(x => x.totalOk || x.sim >= 0.6 || !lines.length);
+  // nazwa dobrze odczytana, a numer nie pasuje (albo go brak): dołóż karty po samej nazwie
+  const bestSim = out.reduce((m, x) => Math.max(m, x.sim), 0);
+  if (lines.length && bestSim < 0.75) {
     const scored = [];
     for (const [name, cards] of nameIndex()) {
       const sim = nameSim(lines, name);
       if (sim >= 0.7) scored.push({ name, cards, sim });
     }
     scored.sort((a, b) => b.sim - a.sim || b.name.length - a.name.length);
-    const top = scored.slice(0, 3);
-    for (const { cards, sim } of top) {
-      for (const c of cards) out.push({ c, score: sim * 3, sim, nameOnly: true });
+    for (const { cards, sim } of scored.slice(0, 3)) {
+      for (const c of cards) if (!byId.has(c.id)) out.push({ c, score: sim * 3 - 0.5, sim, nameOnly: true });
     }
   }
   out.sort((a, b) => b.score - a.score || (b.c.set.date || '').localeCompare(a.c.set.date || ''));
@@ -159,15 +183,46 @@ function matchCards(nameText, numInfo) {
 
 // ===== UI =====
 function scanHint(text) { $('#scanHint').textContent = text; }
+// Wybór aparatu: iPhone z kilkoma obiektywami domyślnie daje „wirtualny” aparat, który sam przełącza
+// obiektywy (szeroki ↔ ultraszeroki) przy bliskim kadrze — obraz skacze. Pojedynczy „Tylny aparat” jest stabilny.
+const CAM_VIRTUAL = /triple|dual|potrójn|podwójn|dreifach|dual-?weitwinkel/i;
+const CAM_PLAIN = /^(back camera|tylny aparat|aparat tylny|kamera tylna|tylna kamera|rückkamera|caméra arrière)$/i;
+async function listCameras() {
+  try { return (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput'); }
+  catch { return []; }
+}
+async function openStream(camId) {
+  const size = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+  return navigator.mediaDevices.getUserMedia({
+    video: camId ? { deviceId: { exact: camId }, ...size } : { facingMode: { ideal: 'environment' }, ...size }, audio: false,
+  });
+}
 async function startCamera() {
   const video = $('#scanVideo');
   $('#scanShot').disabled = false;
   if (!navigator.mediaDevices?.getUserMedia) { noCamera(); return; }
   try {
-    SCAN.stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false,
-    });
+    const saved = setting('camId');
+    try { SCAN.stream = await openStream(saved); }
+    catch (e) {
+      if (!saved) throw e;
+      S.store.settings.camId = ''; saveStore();
+      SCAN.stream = await openStream('');
+    }
+    // etykiety aparatów są dostępne dopiero po udzieleniu zgody
+    SCAN.cams = await listCameras();
+    const track = SCAN.stream.getVideoTracks()[0];
+    if (!saved && track && CAM_VIRTUAL.test(track.label)) {
+      const plain = SCAN.cams.find(d => CAM_PLAIN.test(d.label.trim()));
+      if (plain) {
+        SCAN.stream.getTracks().forEach(tr => tr.stop());
+        try { SCAN.stream = await openStream(plain.deviceId); } catch { SCAN.stream = await openStream(''); }
+      }
+    }
     if ($('#scanner').hidden) { stopCamera(); return; }
+    const tr = SCAN.stream.getVideoTracks()[0];
+    tr?.applyConstraints?.({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
+    $('#scanCam').hidden = SCAN.cams.length < 2;
     video.srcObject = SCAN.stream;
     await video.play().catch(() => {});
     scanHint(t('scanHint'));
@@ -175,6 +230,18 @@ async function startCamera() {
     console.warn('camera', e);
     noCamera();
   }
+}
+async function switchCamera() {
+  if (!SCAN.cams.length) SCAN.cams = await listCameras();
+  if (SCAN.cams.length < 2) return;
+  const curId = SCAN.stream?.getVideoTracks()[0]?.getSettings?.().deviceId;
+  const i = SCAN.cams.findIndex(d => d.deviceId === curId);
+  const next = SCAN.cams[(i + 1) % SCAN.cams.length];
+  stopCamera();
+  S.store.settings.camId = next.deviceId; saveStore();
+  await startCamera();
+  const label = SCAN.stream?.getVideoTracks()[0]?.label || next.label;
+  if (label) toast(t('scanCamUsing', label));
 }
 function noCamera() {
   $('#scanShot').disabled = true;
@@ -258,26 +325,27 @@ async function runScan(card, full = null) {
     SCAN.busy = 'reading';
     scanHint(t('scanReading'));
     const W = card.width, H = card.height;
-    const nameText = await ocr(regionCanvas(card, W * 0.03, H * 0.015, W * 0.80, H * 0.11, 1.6), 11);
-    const numText = await ocr(regionCanvas(card, 0, H * 0.855, W, H * 0.135, 2.2), 11, '0123456789/ABCDEFGHIJKLMNOPQRSTUVWXYZ');
-    let numInfo = parseNumber(numText);
+    // pasy z zapasem — kadr z ręki rzadko jest idealnie wyrównany
+    const nameText = await ocr(regionCanvas(card, W * 0.02, H * 0.005, W * 0.82, H * 0.135, 1.6), 11);
+    const numText = await ocr(regionCanvas(card, 0, H * 0.83, W, H * 0.17, 2.0), 11, '0123456789/ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+    let nums = parseNumbers(numText);
     let names = nameText;
-    let results = matchCards(names, numInfo);
+    let results = matchCards(names, nums);
     // zapas: OCR całej karty / całego zdjęcia
     if (!results.length || (results[0].sim < 0.75 && !results[0].totalOk)) {
       const src = full || card;
       const scale = Math.min(2, 1600 / Math.max(src.width, src.height) * 1.2);
       const allText = await ocr(regionCanvas(src, 0, 0, src.width, src.height, scale), 3);
-      numInfo = numInfo || parseNumber(allText);
+      const more = parseNumbers(allText).filter(n => !nums.some(m => m.num === n.num && m.total === n.total));
+      nums = [...nums, ...more];
       names = nameText + '\n' + allText;
-      const r2 = matchCards(names, numInfo);
+      const r2 = matchCards(names, nums);
       if (r2.length && (!results.length || r2[0].score > results[0].score)) results = r2;
     }
-    const firstLine = ocrLines(nameText)[0] || '';
     const best = results[0];
     SCAN.read = {
-      name: best && best.sim >= 0.6 ? best.c.name : firstLine,
-      num: numInfo ? (numInfo.total ? `${numInfo.num}/${numInfo.total}` : numInfo.num) : '',
+      name: best && best.sim >= 0.6 ? best.c.name : guessName(ocrLines(names)),
+      num: best && best.totalOk ? `${best.c.num}/${best.c.set.total}` : numsText(nums),
       thumb: card.toDataURL('image/jpeg', 0.6),
     };
     showResults(results);
@@ -297,6 +365,7 @@ function showResults(results) {
   const idx = ownedIndex();
   const dexOf = top.find(x => x.nameOnly && x.c.dex[0])?.c.dex[0];
   $('#scanResult').innerHTML = `
+    <div class="scan-res-head"><b>${t('scanResultTitle')}</b><button class="btn small scan-again">${t('scanAgain')}</button></div>
     <div class="scan-read">
       <img src="${r.thumb}" alt="">
       <form class="scan-form" id="scanForm">
@@ -316,7 +385,7 @@ function showResults(results) {
     }).join('')}</ul>` : `<p class="muted">${t('scanNone')}</p>`}
     <div class="btn-row">
       ${dexOf ? `<button class="btn ghost" id="scanDex" data-dex="${dexOf}">${t('scanAllOf', esc(S.byId.get(dexOf)?.name || ''))}</button>` : ''}
-      <button class="btn" id="scanAgain">${t('scanAgain')}</button>
+      <button class="btn scan-again" id="scanAgain">${t('scanAgain')}</button>
     </div>`;
   $('#scanResult').hidden = false;
   scanHint('');
@@ -327,6 +396,7 @@ function bindScanner() {
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !$('#scanner').hidden && !document.querySelector('dialog[open]')) closeScanner();
   });
+  $('#scanCam').addEventListener('click', () => switchCamera());
   $('#scanShot').addEventListener('click', () => {
     const card = captureFromVideo();
     if (card) runScan(card);
@@ -339,7 +409,7 @@ function bindScanner() {
     runScan(card, full);
   });
   $('#scanResult').addEventListener('click', e => {
-    if (e.target.closest('#scanAgain')) { resetScanner(); return; }
+    if (e.target.closest('.scan-again')) { resetScanner(); return; }
     const dx = e.target.closest('#scanDex');
     if (dx) { closeScanner(); setTimeout(() => openDetail(+dx.dataset.dex), 50); return; }
     const c = e.target.closest('[data-card]');
@@ -349,6 +419,7 @@ function bindScanner() {
     e.preventDefault();
     const name = $('#scanName').value, num = $('#scanNum').value;
     SCAN.read = { ...SCAN.read, name, num };
-    showResults(matchCards(name, parseNumber(num.toUpperCase()) || (num.trim() ? { num: num.trim() } : null)));
+    const parsed = parseNumbers(num);
+    showResults(matchCards(name, parsed.length ? parsed : num.trim().split(/\s+/).filter(Boolean).map(n => ({ num: n }))));
   });
 }
