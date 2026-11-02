@@ -76,8 +76,11 @@ function parseNumbers(text) {
   const add = o => { const k = `${o.num}/${o.total || ''}`; if (!seen.has(k)) { seen.add(k); out.push(o); } };
   let m;
   // podzestawy z literami: TG05/TG30, GG12/GG70, SV045/SV122, RC5/RC32, H3/H32
-  const reSub = /(?:^|[^A-Z])(TG|GG|SV|RC|SH|H)(\d{1,3}) ?\/ ?(?:TG|GG|SV|RC|SH|H)?(\d{2,3})/g;
+  const reSub = /(?:^|[^A-Z])(TG|GG|SV|RC|SH)(\d{1,3}) ?\/ ?(?:TG|GG|SV|RC|SH)?(\d{2,3})/g;
   while ((m = reSub.exec(T))) add({ num: m[1] + m[2], total: m[3] });
+  // Aquapolis/Skyridge: H1/H32 (1–2 cyfry; „H” przed zwykłym numerem to znak regulacji)
+  const reH = /(?:^|[^A-Z])H(\d{1,2}) ?\/ ?H?(\d{2})\b/g;
+  while ((m = reH.exec(T))) add({ num: 'H' + m[1], total: m[2] });
   // zwykłe numery: 025/165 (litery przed nimi, np. „MEW EN”, są pomijane)
   const reNum = /(\d{1,3}) ?\/ ?(\d{2,3})/g;
   while ((m = reNum.exec(T))) add({ num: m[1], total: m[2] });
@@ -86,6 +89,14 @@ function parseNumbers(text) {
   return out;
 }
 const numsText = nums => nums.map(n => (n.total ? `${n.num}/${n.total}` : n.num)).join(' ');
+// HP z górnego paska: „HP 60” (nowe karty) albo „60 HP” (starsze); OCR myli czasem 0 z O
+function parseHP(text) {
+  const T = String(text).toUpperCase().replace(/\s+/g, ' ');
+  const m = T.match(/H\s?P\s?[:.]?\s?([0-9O]{2,3})\b/) || T.match(/\b([0-9O]{2,3})\s?H\s?P\b/);
+  if (!m) return 0;
+  const hp = parseInt(m[1].replace(/O/g, '0'), 10);
+  return hp >= 10 && hp <= 400 && hp % 10 === 0 ? hp : 0;
+}
 const cleanName = s => norm(s).replace(/[^a-z0-9' -]/g, ' ').replace(/\s+/g, ' ').trim();
 function lev(a, b) {
   if (a === b) return 0;
@@ -144,7 +155,7 @@ function nameIndex() {
   }
   return NAME_INDEX;
 }
-function matchCards(nameText, nums) {
+function matchCards(nameText, nums, hp = 0) {
   const lines = ocrLines(nameText);
   const byId = new Map();
   for (const ni of nums || []) {
@@ -176,6 +187,12 @@ function matchCards(nameText, nums) {
     for (const { cards, sim } of scored.slice(0, 3)) {
       for (const c of cards) if (!byId.has(c.id)) out.push({ c, score: sim * 3 - 0.5, sim, nameOnly: true });
     }
+  }
+  // HP z karty: zgodne = mocny sygnał, niezgodne = lekka kara (OCR mógł się pomylić)
+  if (hp) for (const x of out) {
+    if (!x.c.hp) continue;
+    x.hpOk = x.c.hp === hp;
+    x.score += x.hpOk ? 1.5 : -0.5;
   }
   out.sort((a, b) => b.score - a.score || (b.c.set.date || '').localeCompare(a.c.set.date || ''));
   return out;
@@ -323,17 +340,69 @@ function captureFromVideo() {
   return c;
 }
 // zdjęcie z pliku: karta = środek zdjęcia przycięty do proporcji karty
+// Wykrywanie karty na zdjęciu: tło szacowane z obrzeża kadru, karta = największy zwarty obszar
+// pikseli wyraźnie innych niż tło (rzuty na wiersze i kolumny). Zwraca null, gdy wynik nie wygląda na kartę.
+function detectCard(img, iw, ih) {
+  const k = Math.min(1, 360 / Math.max(iw, ih));
+  const w = Math.max(2, Math.round(iw * k)), h = Math.max(2, Math.round(ih * k));
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, w, h);
+  const d = ctx.getImageData(0, 0, w, h).data;
+  const ring = Math.max(2, Math.round(Math.min(w, h) * 0.03));
+  let n = 0, r = 0, g = 0, b = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (x >= ring && x < w - ring && y >= ring && y < h - ring) continue;
+    const i = (y * w + x) * 4; r += d[i]; g += d[i + 1]; b += d[i + 2]; n++;
+  }
+  r /= n; g /= n; b /= n;
+  const rows = new Float32Array(h), cols = new Float32Array(w);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4;
+    const dist = Math.abs(d[i] - r) + Math.abs(d[i + 1] - g) + Math.abs(d[i + 2] - b);
+    if (dist > 90) { rows[y]++; cols[x]++; }
+  }
+  // najdłuższy ciąg wierszy/kolumn, w których „karta” zajmuje sporą część
+  const run = (arr, len, other) => {
+    let best = null, start = -1, gap = 0;
+    const lim = Math.max(1, Math.round(len * 0.02));
+    for (let i = 0; i <= len; i++) {
+      const on = i < len && arr[i] > other * 0.25;
+      if (on) { if (start < 0) start = i; gap = 0; }
+      else if (start >= 0 && (++gap > lim || i === len)) {
+        const end = i - gap;
+        if (!best || end - start > best[1] - best[0]) best = [start, end];
+        start = -1; gap = 0;
+      }
+    }
+    return best;
+  };
+  const ry = run(rows, h, w), rx = run(cols, w, h);
+  if (!ry || !rx) return null;
+  const bw = rx[1] - rx[0] + 1, bh = ry[1] - ry[0] + 1;
+  const ratio = bw / bh;
+  // karta: proporcje ~0.716, sensowna wielkość, nie cały kadr (wtedy tło = karta i wynik jest przypadkowy)
+  if (ratio < 0.6 || ratio > 0.85 || bw * bh < w * h * 0.12 || (bw > w * 0.97 && bh > h * 0.97)) return null;
+  return { x: rx[0] / k, y: ry[0] / k, w: bw / k, h: bh / k };
+}
+
 async function captureFromFile(file) {
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
     const iw = img.naturalWidth, ih = img.naturalHeight;
     const ar = 63 / 88;
-    let sw = iw, sh = ih;
-    if (iw / ih > ar) sw = ih * ar; else sh = iw / ar;
+    // najpierw spróbuj znaleźć kartę na tle; jak się nie uda — środek zdjęcia w proporcjach karty
+    let box = detectCard(img, iw, ih);
+    if (!box) {
+      let sw = iw, sh = ih;
+      if (iw / ih > ar) sw = ih * ar; else sh = iw / ar;
+      box = { x: (iw - sw) / 2, y: (ih - sh) / 2, w: sw, h: sh };
+    }
     const card = document.createElement('canvas');
     card.width = CARD_W; card.height = CARD_H;
-    card.getContext('2d').drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, CARD_W, CARD_H);
+    card.getContext('2d').drawImage(img, box.x, box.y, box.w, box.h, 0, 0, CARD_W, CARD_H);
     // całe zdjęcie (zmniejszone) na wypadek, gdy karta nie wypełnia kadru
     const full = document.createElement('canvas');
     const k = Math.min(1, 1600 / Math.max(iw, ih));
@@ -354,11 +423,13 @@ async function runScan(card, full = null) {
     scanHint(t('scanReading'));
     const W = card.width, H = card.height;
     // pasy z zapasem — kadr z ręki rzadko jest idealnie wyrównany (zgodne z żółtymi pasami .zone w styles.css)
-    const nameText = await ocr(regionCanvas(card, W * 0.02, H * 0.005, W * 0.82, H * 0.135, 1.6), 11);
+    // górny pas na całą szerokość: nazwa po lewej, HP po prawej
+    const nameText = await ocr(regionCanvas(card, W * 0.02, H * 0.005, W * 0.96, H * 0.135, 1.6), 11);
+    let hp = parseHP(nameText);
     const numText = await ocr(regionCanvas(card, 0, H * 0.83, W, H * 0.17, 2.0), 11, '0123456789/ABCDEFGHIJKLMNOPQRSTUVWXYZ');
     let nums = parseNumbers(numText);
     let names = nameText;
-    let results = matchCards(names, nums);
+    let results = matchCards(names, nums, hp);
     // zapas: OCR całej karty / całego zdjęcia
     if (!results.length || (results[0].sim < 0.75 && !results[0].totalOk)) {
       const src = full || card;
@@ -367,13 +438,15 @@ async function runScan(card, full = null) {
       const more = parseNumbers(allText).filter(n => !nums.some(m => m.num === n.num && m.total === n.total));
       nums = [...nums, ...more];
       names = nameText + '\n' + allText;
-      const r2 = matchCards(names, nums);
+      hp = hp || parseHP(allText);
+      const r2 = matchCards(names, nums, hp);
       if (r2.length && (!results.length || r2[0].score > results[0].score)) results = r2;
     }
     const best = results[0];
     SCAN.read = {
       name: best && best.sim >= 0.6 ? best.c.name : guessName(ocrLines(names)),
       num: best && best.totalOk ? `${best.c.num}/${best.c.set.total}` : numsText(nums),
+      hp: hp || '',
       thumb: card.toDataURL('image/jpeg', 0.6),
     };
     showResults(results);
@@ -393,12 +466,15 @@ function showResults(results) {
   const idx = ownedIndex();
   const dexOf = top.find(x => x.nameOnly && x.c.dex[0])?.c.dex[0];
   $('#scanResult').innerHTML = `
-    <div class="scan-res-head"><b>${t('scanResultTitle')}</b><button class="btn small scan-again">${t('scanAgain')}</button></div>
+    <div class="scan-res-head"><b>${t('scanResultTitle')}</b><button class="icon-btn dark scan-again" aria-label="${t('scanAgain')}" title="${t('scanAgain')}"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 4a8 8 0 0 1 7.4 5H17v2h6V5h-2v2.3A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8Zm8 8a8 8 0 0 1-15.4 3H7v-2H1v6h2v-2.3A10 10 0 0 0 22 12h-2Z"/></svg></button></div>
     <div class="scan-read">
       <img src="${r.thumb}" alt="">
       <form class="scan-form" id="scanForm">
         <label>${t('scanName')}<input id="scanName" value="${esc(r.name)}" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
-        <label>${t('scanNumber')}<input id="scanNum" value="${esc(r.num)}" autocomplete="off" autocapitalize="characters"></label>
+        <div class="scan-form-row">
+          <label>${t('scanNumber')}<input id="scanNum" value="${esc(r.num)}" autocomplete="off" autocapitalize="characters"></label>
+          <label class="hp">HP<input id="scanHp" value="${esc(r.hp || '')}" inputmode="numeric" autocomplete="off" placeholder="—"></label>
+        </div>
         <button class="btn small" type="submit">${t('scanSearch')}</button>
       </form>
     </div>
@@ -406,7 +482,7 @@ function showResults(results) {
       const c = x.c, have = idx.get(c.id) || 0;
       return `<li class="crow${i === 0 ? ' hl' : ''}">
         <img class="thumb" loading="lazy" src="${esc(c.img)}" onerror="this.style.visibility='hidden'" alt="" data-card="${esc(c.id)}">
-        <button class="info" data-card="${esc(c.id)}"><b>${esc(c.name)}</b><span>${esc(c.set.name)} · <span class="num">${esc(c.num)}${c.set.total ? '/' + c.set.total : ''}</span> · ${esc(c.rarity || '—')} · ${esc((c.set.date || '').slice(0, 4))}</span></button>
+        <button class="info" data-card="${esc(c.id)}"><b>${esc(c.name)}</b><span>${esc(c.set.name)} · <span class="num">${esc(c.num)}${c.set.total ? '/' + c.set.total : ''}</span>${c.hp ? ` · <span class="${x.hpOk ? 'hp-ok' : ''}">HP ${c.hp}</span>` : ''} · ${esc(c.rarity || '—')} · ${esc((c.set.date || '').slice(0, 4))}</span></button>
         ${have ? `<span class="have">✓${have > 1 ? have : ''}</span>` : ''}
         <button class="act" data-card="${esc(c.id)}" aria-label="${t('addCard')}">+</button>
       </li>`;
@@ -447,8 +523,9 @@ function bindScanner() {
   $('#scanResult').addEventListener('submit', e => {
     e.preventDefault();
     const name = $('#scanName').value, num = $('#scanNum').value;
-    SCAN.read = { ...SCAN.read, name, num };
+    const hp = parseInt($('#scanHp').value, 10) || 0;
+    SCAN.read = { ...SCAN.read, name, num, hp: hp || '' };
     const parsed = parseNumbers(num);
-    showResults(matchCards(name, parsed.length ? parsed : num.trim().split(/\s+/).filter(Boolean).map(n => ({ num: n }))));
+    showResults(matchCards(name, parsed.length ? parsed : num.trim().split(/\s+/).filter(Boolean).map(n => ({ num: n })), hp));
   });
 }

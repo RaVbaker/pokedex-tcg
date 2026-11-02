@@ -502,3 +502,49 @@ button.scan-side { border: 0; background: transparent; color: #fff; padding: 0; 
 .scan-stage video { transition: transform .2s ease; }
 /* ukryty przycisk „Aparat” zachowuje miejsce, żeby migawka była na środku */
 .scan-controls .scan-side[hidden] { display: flex !important; visibility: hidden; }
+
+/* Zakładki: 4 widoki — kompaktowo, w razie potrzeby przewijane w poziomie */
+.views { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.views::-webkit-scrollbar { display: none; }
+.views button { padding: 6px 11px; white-space: nowrap; flex: none; }
+
+/* Licznik kart sekretnych — większy */
+.set-secret { font-size: 13px; font-weight: 700; color: #b8860b; white-space: nowrap; }
+.set-secret.big { display: block; font-size: 17px; margin-top: 4px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .set-secret { color: #e5b94c; } }
+
+/* Lista życzeń */
+.wish-cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+.wcard { border: 0; background: none; padding: 0; text-align: left; color: var(--text); display: flex; flex-direction: column; gap: 4px; }
+.wcard .scard { display: block; width: 100%; }
+.wcap { display: flex; flex-direction: column; min-width: 0; }
+.wcap b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wcap small { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scard-wish {
+  position: absolute; top: 4px; right: 4px; z-index: 2; width: 24px; height: 24px; border-radius: 12px;
+  background: #e0457b; color: #fff; font-size: 13px; line-height: 24px; text-align: center; box-shadow: 0 0 0 2px #fff;
+}
+.scard:has(.scard-wish) { filter: none; opacity: .8; }
+.wish-mark { flex: none; color: #e0457b; font-size: 18px; }
+.wish-btn.on { color: #e0457b; border-color: #e0457b; }
+.dlg-actions { margin: 0; }
+
+/* Informacje o karcie */
+.card-info { display: grid; gap: 6px; border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+.ci-row { display: grid; grid-template-columns: 92px 1fr; gap: 8px; align-items: baseline; font-size: 14px; }
+.ci-lbl { color: var(--muted); font-size: 12px; font-weight: 600; }
+.ci-val { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.ci-chip { font-size: 12px; font-weight: 700; border-radius: 6px; padding: 1px 7px; background: var(--surface-2); border: 1px solid var(--line); }
+.ci-chip.energy { color: #fff; border-color: transparent; text-shadow: 0 1px 1px rgb(0 0 0 / .3); }
+.ci-chip.hp { background: #fff1f1; color: #b3261e; border-color: #f2c4c4; }
+.tier-dots { color: #e0a800; letter-spacing: 1px; font-size: 11px; }
+.reg-mark { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 4px; background: #222; color: #fff; font-weight: 800; font-size: 13px; }
+.ci-note { margin: 2px 0 0; }
+
+/* O aplikacji */
+.about-author { margin: 10px 0 4px; font-size: 14px; }
+
+/* Skaner: pole HP obok numeru */
+.scan-form-row { display: grid; grid-template-columns: 1fr 72px; gap: 6px; }
+.scan-form-row input { width: 100%; }
+.hp-ok { color: var(--ok); font-weight: 700; }

@@ -39,6 +39,7 @@
       <button role="tab" id="viewDex" data-view="dex" aria-selected="true" data-i18n="viewDex">Pokédex</button>
       <button role="tab" id="viewAlbum" data-view="album" aria-selected="false" data-i18n="viewAlbum">Mój album</button>
       <button role="tab" id="viewSets" data-view="sets" aria-selected="false" data-i18n="viewSets">Zestawy</button>
+      <button role="tab" id="viewWish" data-view="wish" aria-selected="false" data-i18n="viewWish">Życzenia</button>
     </div>
 
     <div class="search-row">
@@ -134,7 +135,7 @@
     <div class="scan-stage" id="scanStage">
       <video id="scanVideo" playsinline muted autoplay></video>
       <div class="scan-frame" id="scanFrame">
-        <span class="zone top" data-i18n="scanZoneName">Nazwa</span>
+        <span class="zone top" data-i18n="scanZoneName">Nazwa · HP</span>
         <span class="zone bottom" data-i18n="scanZoneNum">Numer</span>
       </div>
       <p class="scan-hint" id="scanHint" data-i18n="scanHint"></p>
@@ -260,6 +261,8 @@
           <button class="btn ghost small" id="checkUpdBtn" data-i18n="checkUpdate">Sprawdź aktualizacje</button>
         </div>
         <p class="muted small" id="updStatus" role="status"></p>
+        <p class="about-author" id="aboutAuthor"></p>
+        <p class="muted small" id="aboutLegal"></p>
       </section>
     </div>
   </dialog>
@@ -270,5 +273,6 @@
   <script src="sets.js"></script>
   <script src="scanner.js"></script>
   <script src="prices.js"></script>
+  <script src="wishlist.js"></script>
 </body>
 </html>
