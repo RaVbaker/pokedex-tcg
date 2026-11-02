@@ -5,6 +5,9 @@
 'use strict';
 
 // ===== Stałe =====
+// Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
+const APP_VERSION = '6';
+const APP_DATE = '2026-11-02';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
 const ART = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
@@ -69,6 +72,9 @@ const I18N = {
     export: 'Eksport CSV', import: 'Import CSV', importMerge: 'Import dołącza do obecnych danych (odznacz, by zastąpić)',
     dataInfo: (p, c) => `Zapisane: ${p} ${plPlural(p, 'stworek', 'stworki', 'stworków')}, ${c} ${plPlural(c, 'karta', 'karty', 'kart')}.`,
     reset: 'Wyczyść całą kolekcję', sourcesSec: 'Źródła danych',
+    aboutSec: 'O aplikacji', version: (v, d) => `Wersja ${v} (${d})`, swVersion: v => `Wersja offline (service worker): ${v}`,
+    swNone: 'Tryb offline: nieaktywny', checkUpdate: 'Sprawdź aktualizacje', updChecking: 'Sprawdzam…',
+    updLatest: 'Masz najnowszą wersję.', updFound: 'Jest nowa wersja — wczytuję…', updError: 'Nie udało się sprawdzić aktualizacji.',
     sources: (s, c, last) => `Stworki: <a href="https://github.com/PokeAPI/pokeapi" target="_blank" rel="noopener">PokeAPI</a>. Karty: <a href="https://github.com/PokemonTCG/pokemon-tcg-data" target="_blank" rel="noopener">pokemon-tcg-data</a> (${s} zestawów, ${nf(c)} kart, ostatni: ${last}). Pokémon i nazwy są znakami towarowymi Nintendo / Game Freak / The Pokémon Company — to nieoficjalne narzędzie fanowskie.`,
     confirmRemoveCards: n => `Usunąć też ${n} ${plPlural(n, 'zapisaną kartę', 'zapisane karty', 'zapisanych kart')}?`,
     exported: 'Wyeksportowano CSV', importDone: (p, c) => `Zaimportowano: ${p} nowych stworków, ${c} kart`,
@@ -143,6 +149,9 @@ const I18N = {
     export: 'Export CSV', import: 'Import CSV', importMerge: 'Import adds to current data (uncheck to replace)',
     dataInfo: (p, c) => `Saved: ${p} Pokémon, ${c} ${enPlural(c, 'card', 'cards')}.`,
     reset: 'Clear entire collection', sourcesSec: 'Data sources',
+    aboutSec: 'About', version: (v, d) => `Version ${v} (${d})`, swVersion: v => `Offline version (service worker): ${v}`,
+    swNone: 'Offline mode: not active', checkUpdate: 'Check for updates', updChecking: 'Checking…',
+    updLatest: 'You have the latest version.', updFound: 'New version found — loading…', updError: 'Could not check for updates.',
     sources: (s, c, last) => `Pokémon: <a href="https://github.com/PokeAPI/pokeapi" target="_blank" rel="noopener">PokeAPI</a>. Cards: <a href="https://github.com/PokemonTCG/pokemon-tcg-data" target="_blank" rel="noopener">pokemon-tcg-data</a> (${s} sets, ${nf(c)} cards, latest: ${last}). Pokémon and character names are trademarks of Nintendo / Game Freak / The Pokémon Company — this is an unofficial fan tool.`,
     confirmRemoveCards: n => `Also remove ${n} saved ${enPlural(n, 'card', 'cards')}?`,
     exported: 'CSV exported', importDone: (p, c) => `Imported: ${p} new Pokémon, ${c} cards`,
@@ -898,6 +907,38 @@ function updateDataInfo() {
   const o = Object.values(S.store.owned);
   $('#dataInfo').textContent = t('dataInfo', o.length, totalOwnedCards());
   $('#sourcesText').innerHTML = t('sources', S.sets.length, S.cards.length, esc(S.sets[S.sets.length - 1]?.name));
+  askSwVersion();
+  renderVersion();
+}
+
+// ===== Wersja i aktualizacje =====
+let swVersion = null;
+function renderVersion() {
+  $('#appVersion').textContent = t('version', APP_VERSION, APP_DATE);
+  $('#setVersion').textContent = 'v' + APP_VERSION;
+  $('#swVersion').textContent = swVersion ? t('swVersion', swVersion) : t('swNone');
+}
+function askSwVersion() {
+  const ctl = navigator.serviceWorker?.controller;
+  if (ctl) ctl.postMessage({ type: 'version' });
+}
+async function checkUpdate() {
+  const st = $('#updStatus');
+  st.textContent = t('updChecking');
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration();
+    if (!reg) { st.textContent = t('swNone'); return; }
+    await reg.update();
+    const nw = reg.installing || reg.waiting;
+    if (!nw) { st.textContent = t('updLatest'); return; }
+    st.textContent = t('updFound');
+    // nowy service worker przejmuje stronę (skipWaiting + clients.claim) → przeładuj
+    navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
+    setTimeout(() => location.reload(), 8000);
+  } catch (e) {
+    console.warn(e);
+    st.textContent = t('updError');
+  }
 }
 function buildFilterUI() {
   $('#typeChips').innerHTML = Object.entries(TYPE_COLORS)
@@ -1126,6 +1167,7 @@ function bindEvents() {
   $('#sCardImg').addEventListener('change', e => setS('cardImg', e.target.checked));
   $('#sHd').addEventListener('change', e => setS('hd', e.target.checked));
   $('#exportBtn').addEventListener('click', exportCSV);
+  $('#checkUpdBtn').addEventListener('click', checkUpdate);
   $('#importFile').addEventListener('change', async e => {
     const file = e.target.files[0];
     e.target.value = '';
@@ -1166,6 +1208,11 @@ async function main() {
   }
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW', err));
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data?.type === 'version') { swVersion = e.data.version; if ($('#settingsDlg').open) renderVersion(); }
+    });
+    navigator.serviceWorker.addEventListener('controllerchange', askSwVersion);
+    askSwVersion();
   }
 }
 document.addEventListener("DOMContentLoaded", main);

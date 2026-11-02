@@ -51,7 +51,7 @@ Aktualizacja danych (np. po wyjściu nowego zestawu):
 python3 tools/build_data.py      # pobiera źródła do .cache/ i przebudowuje data/*.json
 ```
 
-Po zmianie plików podbij `VERSION` w `sw.js`, żeby telefony pobrały nową wersję.
+Po zmianie plików podbij wersję w **dwóch miejscach**: `APP_VERSION`/`APP_DATE` w `app.js` i `VERSION` w `sw.js` (np. `6` i `v6`). Numer widać w ⚙︎ (przy tytule i w sekcji „O aplikacji”, razem z wersją działającego service workera); przycisk „Sprawdź aktualizacje” pobiera nową wersję i przeładowuje stronę.
 
 ## Pliki
 
