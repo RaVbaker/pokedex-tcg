@@ -275,11 +275,19 @@ dialog.sheet {
   border: 0; padding: 0; background: var(--surface); color: var(--text);
   width: min(560px, 100vw); max-width: 100vw; max-height: 92dvh; border-radius: 20px 20px 0 0;
   margin: auto auto 0; box-shadow: 0 -8px 30px rgb(0 0 0 / .3);
+  overflow-y: auto; overscroll-behavior: contain;
 }
 @media (min-width: 640px) { dialog.sheet { margin: auto; border-radius: 20px; } }
 dialog.sheet::backdrop { background: rgb(0 0 0 / .5); }
 .sheet-body { padding: 16px max(16px, env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
-.sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+/* nagłówek okna (tytuł + X) przyklejony u góry podczas przewijania */
+.sheet-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  position: sticky; top: 0; z-index: 5; background: var(--surface);
+  margin: -16px calc(-1 * max(16px, env(safe-area-inset-right))) 8px calc(-1 * max(16px, env(safe-area-inset-left)));
+  padding: 12px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+  border-bottom: 1px solid var(--line);
+}
 .sheet-head h2 { margin: 0; font-size: 19px; }
 .set-group { border-top: 1px solid var(--line); padding: 12px 0; }
 .set-group h3 { margin: 0 0 8px; font-size: 15px; }
@@ -417,14 +425,14 @@ body.album-mode .filter-btn, body.album-mode #filters { display: none !important
   height: min(72%, calc((100vw - 48px) * 88 / 63)); aspect-ratio: 63 / 88;
   border-radius: 14px; box-shadow: 0 0 0 100vmax rgb(0 0 0 / .55); border: 3px solid #fff;
 }
-.scan-frame span {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 13.5%;
-  border-top: 2px dashed rgb(255 210 63 / .9);
+/* pasy, z których OCR czyta nazwę (góra) i numer (dół) — muszą zgadzać się z regionami w scanner.js */
+.scan-frame .zone {
+  position: absolute; left: 0; right: 0; display: flex; align-items: center; justify-content: flex-end;
+  padding: 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase;
+  color: #ffd23f; background: rgb(255 210 63 / .12); text-shadow: 0 1px 2px #000; pointer-events: none;
 }
-.scan-frame::before {
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 12.5%;
-  border-bottom: 2px dashed rgb(255 210 63 / .9);
-}
+.scan-frame .zone.top { top: 0; height: 14%; border-bottom: 2px dashed rgb(255 210 63 / .9); border-radius: 11px 11px 0 0; }
+.scan-frame .zone.bottom { bottom: 0; height: 17%; border-top: 2px dashed rgb(255 210 63 / .9); border-radius: 0 0 11px 11px; }
 .scan-hint {
   position: absolute; left: 16px; right: 16px; bottom: 12px; margin: 0; text-align: center;
   font-size: 14px; text-shadow: 0 1px 3px #000;
@@ -480,3 +488,17 @@ body.album-mode .filter-btn, body.album-mode #filters { display: none !important
 button.scan-side { border: 0; background: transparent; color: #fff; padding: 0; font: inherit; font-size: 12px; }
 .scan-res-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
 .scan-res-head b { font-size: 16px; }
+
+/* Wersja aplikacji */
+.ver-badge { font-size: 12px; font-weight: 700; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 1px 6px; vertical-align: middle; }
+.ver-line { margin: 4px 0 8px; }
+
+/* Skaner: powiększenie */
+.scan-top { right: 12px; display: flex; justify-content: space-between; align-items: center; }
+.zoom-btn {
+  min-width: 52px; height: 40px; border-radius: 20px; border: 2px solid #ffd23f; background: rgb(0 0 0 / .5);
+  color: #ffd23f; font-weight: 800; font-size: 16px; padding: 0 12px;
+}
+.scan-stage video { transition: transform .2s ease; }
+/* ukryty przycisk „Aparat” zachowuje miejsce, żeby migawka była na środku */
+.scan-controls .scan-side[hidden] { display: flex !important; visibility: hidden; }

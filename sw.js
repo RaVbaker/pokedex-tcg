@@ -1,5 +1,6 @@
 /* Service worker: offline dla aplikacji i danych, cache obrazków stworków. */
-const VERSION = 'v5';
+// Wersja aplikacji — podbijaj razem z APP_VERSION w app.js przy każdej zmianie plików
+const VERSION = 'v6';
 const SHELL = `pokedex-shell-${VERSION}`;
 const IMG = 'pokedex-img-v1';
 const ASSETS = [
@@ -9,7 +10,8 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(SHELL).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  // cache: 'reload' — pomija pamięć HTTP przeglądarki, żeby nowa wersja na pewno pobrała świeże pliki
+  e.waitUntil(caches.open(SHELL).then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
@@ -18,6 +20,11 @@ self.addEventListener('activate', e => {
       .then(keys => Promise.all(keys.filter(k => k.startsWith('pokedex-') && k !== SHELL && k !== IMG).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
+});
+
+// strona pyta o wersję działającego service workera
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'version') e.source?.postMessage({ type: 'version', version: VERSION });
 });
 
 self.addEventListener('fetch', e => {

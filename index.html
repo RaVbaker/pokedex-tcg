@@ -133,13 +133,17 @@
   <div class="scanner" id="scanner" hidden aria-modal="true" role="dialog" data-i18n-aria="scan">
     <div class="scan-stage" id="scanStage">
       <video id="scanVideo" playsinline muted autoplay></video>
-      <div class="scan-frame" id="scanFrame"><span></span></div>
+      <div class="scan-frame" id="scanFrame">
+        <span class="zone top" data-i18n="scanZoneName">Nazwa</span>
+        <span class="zone bottom" data-i18n="scanZoneNum">Numer</span>
+      </div>
       <p class="scan-hint" id="scanHint" data-i18n="scanHint"></p>
     </div>
     <div class="scan-top">
       <button class="icon-btn" id="scanClose" data-i18n-aria="close">
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4 6.4 5Z"/></svg>
       </button>
+      <button class="zoom-btn" id="scanZoom" type="button" data-i18n-aria="scanZoom">1×</button>
     </div>
     <div class="scan-controls" id="scanControls">
       <label class="scan-side">
@@ -165,7 +169,7 @@
   <dialog id="settingsDlg" class="sheet">
     <div class="sheet-body">
       <div class="sheet-head">
-        <h2 data-i18n="settings">Ustawienia</h2>
+        <h2><span data-i18n="settings">Ustawienia</span> <small class="ver-badge" id="setVersion"></small></h2>
         <button class="icon-btn dark" data-close data-i18n-aria="close">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4 6.4 5Z"/></svg>
         </button>
@@ -223,6 +227,14 @@
           <button class="btn small" id="pwSave" data-i18n="pwSaveTest">Zapisz i sprawdź</button>
           <button class="btn ghost small" id="pwClear" data-i18n="pwRemove">Usuń klucz</button>
         </div>
+        <label class="row"><span data-i18n="pwTtl">Ceny ważne przez</span>
+          <select id="pwTtl">
+            <option value="1" data-i18n="pwTtl1">1 dzień</option>
+            <option value="7" data-i18n="pwTtl7">7 dni</option>
+            <option value="30" data-i18n="pwTtl30">30 dni</option>
+            <option value="0" data-i18n="pwTtl0">Bez wygasania (tylko ręczne „Odśwież”)</option>
+          </select>
+        </label>
         <label class="row"><span data-i18n="pwSource">Główne źródło cen</span>
           <select id="pwSrc">
             <option value="cm">Cardmarket (EUR)</option>
@@ -239,6 +251,15 @@
       <section class="set-group">
         <h3 data-i18n="sourcesSec">Źródła danych</h3>
         <p class="muted small" id="sourcesText"></p>
+      </section>
+
+      <section class="set-group">
+        <h3 data-i18n="aboutSec">O aplikacji</h3>
+        <p class="ver-line"><b id="appVersion"></b><br><span class="muted small" id="swVersion"></span></p>
+        <div class="btn-row">
+          <button class="btn ghost small" id="checkUpdBtn" data-i18n="checkUpdate">Sprawdź aktualizacje</button>
+        </div>
+        <p class="muted small" id="updStatus" role="status"></p>
       </section>
     </div>
   </dialog>

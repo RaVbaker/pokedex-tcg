@@ -5,6 +5,9 @@
 'use strict';
 
 // ===== Stałe =====
+// Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
+const APP_VERSION = '6';
+const APP_DATE = '2026-11-02';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
 const ART = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
@@ -69,6 +72,9 @@ const I18N = {
     export: 'Eksport CSV', import: 'Import CSV', importMerge: 'Import dołącza do obecnych danych (odznacz, by zastąpić)',
     dataInfo: (p, c) => `Zapisane: ${p} ${plPlural(p, 'stworek', 'stworki', 'stworków')}, ${c} ${plPlural(c, 'karta', 'karty', 'kart')}.`,
     reset: 'Wyczyść całą kolekcję', sourcesSec: 'Źródła danych',
+    aboutSec: 'O aplikacji', version: (v, d) => `Wersja ${v} (${d})`, swVersion: v => `Wersja offline (service worker): ${v}`,
+    swNone: 'Tryb offline: nieaktywny', checkUpdate: 'Sprawdź aktualizacje', updChecking: 'Sprawdzam…',
+    updLatest: 'Masz najnowszą wersję.', updFound: 'Jest nowa wersja — wczytuję…', updError: 'Nie udało się sprawdzić aktualizacji.',
     sources: (s, c, last) => `Stworki: <a href="https://github.com/PokeAPI/pokeapi" target="_blank" rel="noopener">PokeAPI</a>. Karty: <a href="https://github.com/PokemonTCG/pokemon-tcg-data" target="_blank" rel="noopener">pokemon-tcg-data</a> (${s} zestawów, ${nf(c)} kart, ostatni: ${last}). Pokémon i nazwy są znakami towarowymi Nintendo / Game Freak / The Pokémon Company — to nieoficjalne narzędzie fanowskie.`,
     confirmRemoveCards: n => `Usunąć też ${n} ${plPlural(n, 'zapisaną kartę', 'zapisane karty', 'zapisanych kart')}?`,
     exported: 'Wyeksportowano CSV', importDone: (p, c) => `Zaimportowano: ${p} nowych stworków, ${c} kart`,
@@ -83,13 +89,15 @@ const I18N = {
     secret: (h, n) => `+ sekretne ${h}/${n}`, complete: 'Komplet!', setCards: 'Karty w zestawie',
     showAll: 'Wszystkie', showMissing: 'Brakuje', showOwned: 'Mam', back: 'Wstecz',
     removeOne: 'Usuń 1 egz.', cardRemoved: 'Usunięto kartę', addMore: 'Dodaj kolejny',
-    scan: 'Skanuj kartę', scanHint: 'Włóż kartę w ramkę (ok. 15–20 cm od aparatu). Unikaj odblasków.', scanCapture: 'Zrób zdjęcie',
+    scan: 'Skanuj kartę', scanHint: 'Krawędzie karty dopasuj do białej ramki — nazwa w górnym żółtym pasie, numer w dolnym. Gdy obraz skacze, odsuń telefon (~25–30 cm) i ustaw 2×.', scanZoneName: 'Nazwa', scanZoneNum: 'Numer', scanZoom: 'Powiększenie', scanCapture: 'Zrób zdjęcie',
     scanPhoto: 'Zdjęcie', scanLoading: 'Ładowanie OCR (pierwszy raz ~10 MB)…', scanReading: 'Odczytuję tekst…',
     scanNoCamera: 'Brak dostępu do kamery — wybierz zdjęcie karty.', scanName: 'Nazwa', scanNumber: 'Numer (np. 25/165)',
     scanSearch: 'Szukaj', scanAgain: 'Skanuj ponownie', scanNone: 'Nie rozpoznano karty. Popraw nazwę lub numer i wyszukaj.',
     scanCandidates: n => `Pasujące karty (${n})`, scanResultTitle: 'Wynik skanu', scanCamera: 'Aparat', scanCamUsing: l => `Aparat: ${l}`, scanAllOf: n => `Wszystkie karty: ${n}`, scanError: 'Błąd OCR: ',
     pwSec: 'Ceny kart (PokéWallet)',
-    pwHint: 'Ceny z Cardmarket (EUR) i TCGplayer (USD) przez <a href="https://pokewallet.io" target="_blank" rel="noopener">PokéWallet API</a>. Załóż konto, skopiuj klucz API (<code>pk_live_…</code>) i wklej poniżej. Klucz zostaje tylko w tej przeglądarce i nie trafia do eksportu CSV. Darmowy plan ma limit ok. 100 zapytań na godzinę — ceny są zapamiętywane na 24 h.',
+    pwHint: 'Ceny z Cardmarket (EUR) i TCGplayer (USD) przez <a href="https://pokewallet.io" target="_blank" rel="noopener">PokéWallet API</a>. Załóż konto, skopiuj klucz API (<code>pk_live_…</code>) i wklej poniżej. Klucz zostaje tylko w tej przeglądarce i nie trafia do eksportu CSV. Darmowy plan ma limit ok. 100 zapytań na godzinę. Pobrane ceny są zapisywane w tej przeglądarce razem z datą i nie są pobierane ponownie, dopóki nie miną ustawionej ważności — „Wyceń kolekcję” dociąga tylko brakujące i przeterminowane.',
+    pwTtl: 'Zapisane ceny ważne przez', pwTtl1: '1 dzień', pwTtl7: '7 dni', pwTtl30: '30 dni', pwTtl0: 'Bez wygasania (tylko ręczne „Odśwież”)',
+    pwDates: (a, b) => (a === b ? `Ceny z: ${a}.` : `Ceny z: ${a} – ${b}.`),
     pwKey: 'Klucz API', pwSaveTest: 'Zapisz i sprawdź', pwRemove: 'Usuń klucz', pwSource: 'Główne źródło cen',
     pwValueBtn: 'Wyceń kolekcję', pwCacheClear: 'Wyczyść zapisane ceny', pwShowKey: 'Pokaż klucz',
     pwNoKey: 'Brak klucza API PokéWallet (⚙︎ → Ceny kart).', pwSetKeyHint: 'Ceny: dodaj klucz API PokéWallet w ⚙︎ → Ceny kart.',
@@ -143,6 +151,9 @@ const I18N = {
     export: 'Export CSV', import: 'Import CSV', importMerge: 'Import adds to current data (uncheck to replace)',
     dataInfo: (p, c) => `Saved: ${p} Pokémon, ${c} ${enPlural(c, 'card', 'cards')}.`,
     reset: 'Clear entire collection', sourcesSec: 'Data sources',
+    aboutSec: 'About', version: (v, d) => `Version ${v} (${d})`, swVersion: v => `Offline version (service worker): ${v}`,
+    swNone: 'Offline mode: not active', checkUpdate: 'Check for updates', updChecking: 'Checking…',
+    updLatest: 'You have the latest version.', updFound: 'New version found — loading…', updError: 'Could not check for updates.',
     sources: (s, c, last) => `Pokémon: <a href="https://github.com/PokeAPI/pokeapi" target="_blank" rel="noopener">PokeAPI</a>. Cards: <a href="https://github.com/PokemonTCG/pokemon-tcg-data" target="_blank" rel="noopener">pokemon-tcg-data</a> (${s} sets, ${nf(c)} cards, latest: ${last}). Pokémon and character names are trademarks of Nintendo / Game Freak / The Pokémon Company — this is an unofficial fan tool.`,
     confirmRemoveCards: n => `Also remove ${n} saved ${enPlural(n, 'card', 'cards')}?`,
     exported: 'CSV exported', importDone: (p, c) => `Imported: ${p} new Pokémon, ${c} cards`,
@@ -157,13 +168,15 @@ const I18N = {
     secret: (h, n) => `+ secret ${h}/${n}`, complete: 'Complete!', setCards: 'Cards in set',
     showAll: 'All', showMissing: 'Missing', showOwned: 'Owned', back: 'Back',
     removeOne: 'Remove 1 copy', cardRemoved: 'Card removed', addMore: 'Add another',
-    scan: 'Scan card', scanHint: 'Fit the card in the frame (about 15–20 cm away). Avoid glare.', scanCapture: 'Capture',
+    scan: 'Scan card', scanHint: 'Align the card edges with the white frame — name in the top yellow band, number in the bottom one. If the image jumps, move the phone back (~25–30 cm) and set 2×.', scanZoneName: 'Name', scanZoneNum: 'Number', scanZoom: 'Zoom', scanCapture: 'Capture',
     scanPhoto: 'Photo', scanLoading: 'Loading OCR (first time ~10 MB)…', scanReading: 'Reading text…',
     scanNoCamera: 'No camera access — pick a photo of the card.', scanName: 'Name', scanNumber: 'Number (e.g. 25/165)',
     scanSearch: 'Search', scanAgain: 'Scan again', scanNone: 'No card recognized. Fix the name or number and search.',
     scanCandidates: n => `Matching cards (${n})`, scanResultTitle: 'Scan result', scanCamera: 'Camera', scanCamUsing: l => `Camera: ${l}`, scanAllOf: n => `All cards: ${n}`, scanError: 'OCR error: ',
     pwSec: 'Card prices (PokéWallet)',
-    pwHint: 'Cardmarket (EUR) and TCGplayer (USD) prices via the <a href="https://pokewallet.io" target="_blank" rel="noopener">PokéWallet API</a>. Create an account, copy your API key (<code>pk_live_…</code>) and paste it below. The key stays in this browser only and is not included in CSV export. The free plan allows about 100 requests per hour — prices are remembered for 24 h.',
+    pwHint: 'Cardmarket (EUR) and TCGplayer (USD) prices via the <a href="https://pokewallet.io" target="_blank" rel="noopener">PokéWallet API</a>. Create an account, copy your API key (<code>pk_live_…</code>) and paste it below. The key stays in this browser only and is not included in CSV export. The free plan allows about 100 requests per hour. Fetched prices are saved in this browser with their date and are not fetched again until they expire — “Value my collection” only fetches missing and expired ones.',
+    pwTtl: 'Saved prices valid for', pwTtl1: '1 day', pwTtl7: '7 days', pwTtl30: '30 days', pwTtl0: 'Never expire (manual “Refresh” only)',
+    pwDates: (a, b) => (a === b ? `Prices from: ${a}.` : `Prices from: ${a} – ${b}.`),
     pwKey: 'API key', pwSaveTest: 'Save & test', pwRemove: 'Remove key', pwSource: 'Main price source',
     pwValueBtn: 'Value my collection', pwCacheClear: 'Clear saved prices', pwShowKey: 'Show key',
     pwNoKey: 'No PokéWallet API key (⚙︎ → Card prices).', pwSetKeyHint: 'Prices: add a PokéWallet API key in ⚙︎ → Card prices.',
@@ -196,7 +209,7 @@ const S = {
   store: { owned: {}, settings: {}, filters: {}, other: [] },
   albumQ: '', albumHit: -1, setsQ: '', cardsBySet: new Map(), ownedIdx: null,
 };
-const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', priceSrc: 'cm', camId: '' };
+const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', priceSrc: 'cm', camId: '', camZoom: 1, pwTtl: 7 };
 
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -741,7 +754,13 @@ function setupSwipe() {
 }
 
 // ===== CSV =====
-const CSV_HEAD = ['dex', 'name', 'owned', 'card_id', 'set_id', 'set_name', 'series', 'card_number', 'set_total', 'rarity', 'card_name', 'variant', 'album_page', 'album_slot', 'added'];
+const CSV_HEAD = ['dex', 'name', 'owned', 'card_id', 'set_id', 'set_name', 'series', 'card_number', 'set_total', 'rarity', 'card_name', 'variant', 'album_page', 'album_slot', 'added', 'price', 'currency', 'price_date'];
+// cena z zapisanych (bez zapytań do API): [kwota, waluta, data]
+function csvPrice(cardId, variant) {
+  const v = typeof cardValue === 'function' ? cardValue(cardId, variant) : null;
+  const at = typeof priceCache === 'function' ? priceCache()[cardId]?.at : null;
+  return v ? [v.value.toFixed(2), v.cur, at ? new Date(at).toISOString().slice(0, 10) : ''] : ['', '', ''];
+}
 function csvCell(v) {
   const s = String(v ?? '');
   return /[",;\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
@@ -756,7 +775,7 @@ function exportCSV() {
     if (o && o.cards.length) {
       for (const oc of o.cards) {
         const c = S.cardById.get(oc.id);
-        lines.push([...base, oc.id, c?.set.id, c?.set.name, c?.set.series, c?.num, c?.set.total, c?.rarity, c?.name, oc.v, page, slot, added].map(csvCell).join(','));
+        lines.push([...base, oc.id, c?.set.id, c?.set.name, c?.set.series, c?.num, c?.set.total, c?.rarity, c?.name, oc.v, page, slot, added, ...csvPrice(oc.id, oc.v)].map(csvCell).join(','));
       }
     } else {
       lines.push([...base, '', '', '', '', '', '', '', '', '', page, slot, added].map(csvCell).join(','));
@@ -765,7 +784,7 @@ function exportCSV() {
   for (const oc of S.store.other) {
     const c = S.cardById.get(oc.id);
     const added = oc.t ? new Date(oc.t).toISOString().slice(0, 10) : '';
-    lines.push([0, c?.name || '', 1, oc.id, c?.set.id, c?.set.name, c?.set.series, c?.num, c?.set.total, c?.rarity, c?.name, oc.v, '', '', added].map(csvCell).join(','));
+    lines.push([0, c?.name || '', 1, oc.id, c?.set.id, c?.set.name, c?.set.series, c?.num, c?.set.total, c?.rarity, c?.name, oc.v, '', '', added, ...csvPrice(oc.id, oc.v)].map(csvCell).join(','));
   }
   const blob = new Blob(['﻿' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -898,6 +917,38 @@ function updateDataInfo() {
   const o = Object.values(S.store.owned);
   $('#dataInfo').textContent = t('dataInfo', o.length, totalOwnedCards());
   $('#sourcesText').innerHTML = t('sources', S.sets.length, S.cards.length, esc(S.sets[S.sets.length - 1]?.name));
+  askSwVersion();
+  renderVersion();
+}
+
+// ===== Wersja i aktualizacje =====
+let swVersion = null;
+function renderVersion() {
+  $('#appVersion').textContent = t('version', APP_VERSION, APP_DATE);
+  $('#setVersion').textContent = 'v' + APP_VERSION;
+  $('#swVersion').textContent = swVersion ? t('swVersion', swVersion) : t('swNone');
+}
+function askSwVersion() {
+  const ctl = navigator.serviceWorker?.controller;
+  if (ctl) ctl.postMessage({ type: 'version' });
+}
+async function checkUpdate() {
+  const st = $('#updStatus');
+  st.textContent = t('updChecking');
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration();
+    if (!reg) { st.textContent = t('swNone'); return; }
+    await reg.update();
+    const nw = reg.installing || reg.waiting;
+    if (!nw) { st.textContent = t('updLatest'); return; }
+    st.textContent = t('updFound');
+    // nowy service worker przejmuje stronę (skipWaiting + clients.claim) → przeładuj
+    navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
+    setTimeout(() => location.reload(), 8000);
+  } catch (e) {
+    console.warn(e);
+    st.textContent = t('updError');
+  }
 }
 function buildFilterUI() {
   $('#typeChips').innerHTML = Object.entries(TYPE_COLORS)
@@ -1126,6 +1177,7 @@ function bindEvents() {
   $('#sCardImg').addEventListener('change', e => setS('cardImg', e.target.checked));
   $('#sHd').addEventListener('change', e => setS('hd', e.target.checked));
   $('#exportBtn').addEventListener('click', exportCSV);
+  $('#checkUpdBtn').addEventListener('click', checkUpdate);
   $('#importFile').addEventListener('change', async e => {
     const file = e.target.files[0];
     e.target.value = '';
@@ -1166,6 +1218,11 @@ async function main() {
   }
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW', err));
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data?.type === 'version') { swVersion = e.data.version; if ($('#settingsDlg').open) renderVersion(); }
+    });
+    navigator.serviceWorker.addEventListener('controllerchange', askSwVersion);
+    askSwVersion();
   }
 }
 document.addEventListener("DOMContentLoaded", main);
