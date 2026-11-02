@@ -9,6 +9,9 @@ Użycie:
   python3 tools/build_data.py [katalog_cache]
 
 Wynik: data/pokemon.json oraz data/cards.json (kompaktowe tablice).
+
+Wiersz karty: [set_idx, numer, nazwa, rarity_idx, [subtype_idx], dex (0 = brak), supertype_idx, (id), (obrazek)]
+Zestaw: [id, nazwa, seria, printedTotal, data, kod, symbol_url, logo_url]
 """
 import csv
 import io
@@ -87,7 +90,7 @@ def build_cards():
     with ThreadPoolExecutor(12) as ex:
         loaded = list(ex.map(get, sets))
 
-    rarities, subtypes = [], []
+    rarities, subtypes, supertypes = [], [], []
     def idx(lst, v):
         if v not in lst:
             lst.append(v)
@@ -95,14 +98,14 @@ def build_cards():
 
     out_sets, out_cards = [], []
     for si, (s, cards) in enumerate(loaded):
+        imgs = s.get("images", {})
         out_sets.append([
             s["id"], s["name"], s.get("series", ""), s.get("printedTotal") or s.get("total") or 0,
             s.get("releaseDate", "").replace("/", "-"), s.get("ptcgoCode", ""),
+            imgs.get("symbol", ""), imgs.get("logo", ""),
         ])
         for c in cards:
-            dex = c.get("nationalPokedexNumbers")
-            if c.get("supertype") != "Pokémon" or not dex:
-                continue
+            dex = c.get("nationalPokedexNumbers") or []
             num = c["number"]
             small = c.get("images", {}).get("small", "")
             std = f"https://images.pokemontcg.io/{s['id']}/{num}.png"
@@ -110,14 +113,15 @@ def build_cards():
                 si, num, c["name"],
                 idx(rarities, c.get("rarity") or ""),
                 [idx(subtypes, t) for t in c.get("subtypes", [])],
-                dex if len(dex) > 1 else dex[0],
+                (dex if len(dex) > 1 else dex[0]) if dex else 0,
+                idx(supertypes, c.get("supertype") or ""),
             ]
             cid = c["id"] if c["id"] != f"{s['id']}-{num}" else 0
             img = small if small and small != std else 0
             if cid or img:
                 row += [cid, img]
             out_cards.append(row)
-    return {"sets": out_sets, "rarities": rarities, "subtypes": subtypes, "cards": out_cards}
+    return {"sets": out_sets, "rarities": rarities, "subtypes": subtypes, "supertypes": supertypes, "cards": out_cards}
 
 
 def main():

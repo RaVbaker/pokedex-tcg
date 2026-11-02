@@ -27,6 +27,9 @@
           <span id="progressText">…</span>
         </div>
       </div>
+      <button class="icon-btn" id="scanBtn" data-i18n-aria="scan">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 4h5V2H2v7h2V4Zm11-2v2h5v5h2V2h-7ZM4 15H2v7h7v-2H4v-5Zm16 5h-5v2h7v-7h-2v5ZM8.5 7h7A1.5 1.5 0 0 1 17 8.5v7a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 7 15.5v-7A1.5 1.5 0 0 1 8.5 7Zm.5 2v6h6V9H9Z"/></svg>
+      </button>
       <button class="icon-btn" id="settingsBtn" data-i18n-aria="settings">
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1l-.4-2.7h-4l-.4 2.7c-.6.3-1.2.6-1.7 1l-2.5-1-2 3.5L4.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1l.4 2.7h4l.4-2.7c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5L19.4 13ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
       </button>
@@ -35,6 +38,7 @@
     <div class="views" role="tablist">
       <button role="tab" id="viewDex" data-view="dex" aria-selected="true" data-i18n="viewDex">Pokédex</button>
       <button role="tab" id="viewAlbum" data-view="album" aria-selected="false" data-i18n="viewAlbum">Mój album</button>
+      <button role="tab" id="viewSets" data-view="sets" aria-selected="false" data-i18n="viewSets">Zestawy</button>
     </div>
 
     <div class="search-row">
@@ -111,6 +115,44 @@
     </div>
   </div>
 
+  <!-- Zestaw: lista kart i kompletność -->
+  <div class="detail" id="setView" hidden aria-modal="true" role="dialog" aria-labelledby="setTitle">
+    <div class="detail-bar">
+      <button class="icon-btn" id="setClose" data-i18n-aria="back">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="m15.4 5-7 7 7 7 1.4-1.4-5.6-5.6 5.6-5.6L15.4 5Z"/></svg>
+      </button>
+      <span class="detail-pos" id="setTitle"></span>
+      <span class="icon-btn-spacer"></span>
+    </div>
+    <div class="detail-scroll" id="setScroll">
+      <div class="detail-inner" id="setInner"></div>
+    </div>
+  </div>
+
+  <!-- Skaner kart (kamera + OCR) -->
+  <div class="scanner" id="scanner" hidden aria-modal="true" role="dialog" data-i18n-aria="scan">
+    <div class="scan-stage" id="scanStage">
+      <video id="scanVideo" playsinline muted autoplay></video>
+      <div class="scan-frame" id="scanFrame"><span></span></div>
+      <p class="scan-hint" id="scanHint" data-i18n="scanHint"></p>
+    </div>
+    <div class="scan-top">
+      <button class="icon-btn" id="scanClose" data-i18n-aria="close">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4 6.4 5Z"/></svg>
+      </button>
+    </div>
+    <div class="scan-controls" id="scanControls">
+      <label class="scan-side">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2ZM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5Z"/></svg>
+        <span data-i18n="scanPhoto">Zdjęcie</span>
+        <input type="file" id="scanFile" accept="image/*">
+      </label>
+      <button class="shutter" id="scanShot" data-i18n-aria="scanCapture"><span></span></button>
+      <span class="scan-side"></span>
+    </div>
+    <div class="scan-result" id="scanResult" hidden></div>
+  </div>
+
   <!-- Podgląd karty TCG + dodawanie do kolekcji -->
   <dialog id="cardDlg" class="sheet">
     <div class="sheet-body" id="cardDlgBody"></div>
@@ -166,6 +208,32 @@
       </section>
 
       <section class="set-group">
+        <h3 data-i18n="pwSec">Ceny kart (PokéWallet)</h3>
+        <p class="muted small" id="pwHint"></p>
+        <label class="row"><span data-i18n="pwKey">Klucz API</span>
+          <span class="key-row">
+            <input id="pwKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="pk_live_…">
+            <button class="btn ghost small" id="pwShow" type="button" data-i18n-aria="pwShowKey">👁</button>
+          </span>
+        </label>
+        <div class="btn-row">
+          <button class="btn small" id="pwSave" data-i18n="pwSaveTest">Zapisz i sprawdź</button>
+          <button class="btn ghost small" id="pwClear" data-i18n="pwRemove">Usuń klucz</button>
+        </div>
+        <label class="row"><span data-i18n="pwSource">Główne źródło cen</span>
+          <select id="pwSrc">
+            <option value="cm">Cardmarket (EUR)</option>
+            <option value="tcg">TCGplayer (USD)</option>
+          </select>
+        </label>
+        <div class="btn-row">
+          <button class="btn small" id="pwValue" data-i18n="pwValueBtn">Wyceń kolekcję</button>
+          <button class="btn ghost small" id="pwCacheClear" data-i18n="pwCacheClear">Wyczyść zapisane ceny</button>
+        </div>
+        <p class="muted small" id="pwStatus" role="status"></p>
+      </section>
+
+      <section class="set-group">
         <h3 data-i18n="sourcesSec">Źródła danych</h3>
         <p class="muted small" id="sourcesText"></p>
       </section>
@@ -175,5 +243,8 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="app.js"></script>
+  <script src="sets.js"></script>
+  <script src="scanner.js"></script>
+  <script src="prices.js"></script>
 </body>
 </html>
