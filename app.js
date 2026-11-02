@@ -42,7 +42,9 @@ const I18N = {
     filters: 'Filtry', type: 'Typ', ownership: 'Posiadanie', all: 'Wszystkie', owned: 'Mam', missing: 'Brakuje',
     generation: 'Generacja', setLabel: 'Kolekcja (zestaw kart)', allSets: 'Wszystkie zestawy',
     numLabel: 'Nr w kolekcji', numPh: 'np. 25 lub 25/165', sort: 'Sortowanie',
-    sortDex: 'Nr Pokédex', sortName: 'Nazwa A–Z', sortType: 'Typ', sortSet: 'Kolejność w zestawie',
+    sortDex: 'Nr Pokédex', sortName: 'Nazwa A–Z', sortType: 'Typ', sortSet: 'Kolejność w zestawie', sortAdded: 'Data dodania',
+    notOwnedGroup: 'Jeszcze nie mam', noDate: 'Bez daty', albumPages: 'Strony albumu', albumAdded: 'Ostatnio dodane',
+    wishNewest: 'Najnowsze', wishOldest: 'Najstarsze', wishByName: 'Nazwa', wishBySet: 'Zestaw',
     clearFilters: 'Wyczyść filtry', done: 'Gotowe', loading: 'Ładowanie danych…',
     loadError: 'Nie udało się wczytać danych. Otwórz stronę przez serwer HTTP (nie file://).',
     progress: (o, t, c) => `Mam ${o} / ${t} · ${nf(c)} ${plPlural(c, 'karta', 'karty', 'kart')}`,
@@ -132,7 +134,9 @@ const I18N = {
     filters: 'Filters', type: 'Type', ownership: 'Ownership', all: 'All', owned: 'Owned', missing: 'Missing',
     generation: 'Generation', setLabel: 'Collection (card set)', allSets: 'All sets',
     numLabel: 'No. in set', numPh: 'e.g. 25 or 25/165', sort: 'Sort',
-    sortDex: 'Pokédex no.', sortName: 'Name A–Z', sortType: 'Type', sortSet: 'Set order',
+    sortDex: 'Pokédex no.', sortName: 'Name A–Z', sortType: 'Type', sortSet: 'Set order', sortAdded: 'Date added',
+    notOwnedGroup: 'Not owned yet', noDate: 'No date', albumPages: 'Binder pages', albumAdded: 'Recently added',
+    wishNewest: 'Newest', wishOldest: 'Oldest', wishByName: 'Name', wishBySet: 'Set',
     clearFilters: 'Clear filters', done: 'Done', loading: 'Loading data…',
     loadError: 'Could not load data. Open the page through an HTTP server (not file://).',
     progress: (o, t, c) => `Have ${o} / ${t} · ${nf(c)} ${enPlural(c, 'card', 'cards')}`,
@@ -231,7 +235,7 @@ const S = {
   store: { owned: {}, settings: {}, filters: {}, other: [], wish: [] },
   albumQ: '', albumHit: -1, setsQ: '', wishQ: '', cardsBySet: new Map(), ownedIdx: null,
 };
-const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', priceSrc: 'cm', camId: '', camZoom: 1, pwTtl: 7 };
+const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', albumSort: 'pages', wishSort: 'new', priceSrc: 'cm', camId: '', camZoom: 1, pwTtl: 7 };
 
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -378,6 +382,11 @@ function applyFilters() {
   if (f.set || f.num) list = list.filter(pk => setCardsFor(pk).length);
   const sort = f.sort || 'dex';
   if (sort === 'name') list = [...list].sort((a, b) => a.name.localeCompare(b.name, 'en'));
+  if (sort === 'added') {
+    // posiadane od najnowszych, potem reszta wg numeru
+    const at = pk => S.store.owned[pk.id]?.t || 0;
+    list = [...list].sort((a, b) => (owned[b.id] ? 1 : 0) - (owned[a.id] ? 1 : 0) || at(b) - at(a) || a.id - b.id);
+  }
   if (sort === 'type') {
     const ti = tp => (tp ? TYPE_ORDER.indexOf(tp) : -1);
     list = [...list].sort((a, b) => ti(a.types[0]) - ti(b.types[0]) || ti(a.types[1]) - ti(b.types[1]) || a.id - b.id);
@@ -471,13 +480,21 @@ function renderGrid() {
   if (view === 'wish') { renderWish(grid); return; }
 
   if (album) {
-    // Mój album: wszystkie strony, brakujące lekko wyszarzone
+    // Mój album: wszystkie strony, brakujące lekko wyszarzone — albo „Ostatnio dodane” wg daty
     S.filtered = S.pokemon;
     $('#status').textContent = t('statusAlbum', Object.keys(S.store.owned).length, total, totalOwnedCards());
+    const aSort = setting('albumSort');
+    const chips = `<div class="summary-chips sets-show">${[['pages', t('albumPages')], ['added', t('albumAdded')]]
+      .map(([v, l]) => `<button data-album-sort="${v}" aria-pressed="${aSort === v}">${l}</button>`).join('')}</div>`;
+    if (aSort === 'added') {
+      const owned = S.pokemon.filter(pk => S.store.owned[pk.id]).sort((a, b) => S.store.owned[b.id].t - S.store.owned[a.id].t || a.id - b.id);
+      grid.innerHTML = chips + (owned.length ? dayGroupsHTML(owned, pk => S.store.owned[pk.id].t, pk => tileHTML(pk, true)) : `<p class="empty">${t('noMatch')}</p>`);
+      return;
+    }
     const lastPage = albumPos(S.maxId).page;
     const out = [];
     for (let page = 1; page <= lastPage; page++) out.push(pageHTML(page, pk => tileHTML(pk, true)));
-    grid.innerHTML = `<div class="pages">${out.join('')}</div>`;
+    grid.innerHTML = chips + `<div class="pages">${out.join('')}</div>`;
     return;
   }
 
@@ -488,6 +505,14 @@ function renderGrid() {
   if (!list.length) { grid.innerHTML = `<p class="empty">${t('noMatch')}</p>`; return; }
 
   const sort = F().sort || 'dex';
+  if (sort === 'added') {
+    const own = list.filter(pk => S.store.owned[pk.id]);
+    const rest = list.filter(pk => !S.store.owned[pk.id]);
+    grid.innerHTML = (own.length ? dayGroupsHTML(own, pk => S.store.owned[pk.id].t, pk => tileHTML(pk)) : '')
+      + (rest.length ? `<section class="group"><div class="page-head"><b>${t('notOwnedGroup')}</b><span>${rest.length}</span></div>
+        <div class="flat">${rest.map(pk => tileHTML(pk)).join('')}</div></section>` : '');
+    return;
+  }
   if (sort === 'type') {
     // grupy wg głównego typu
     const groups = new Map();
@@ -510,6 +535,20 @@ function renderGrid() {
   const pages = [...new Set(list.map(pk => albumPos(pk.id).page))];
   grid.innerHTML = `<div class="pages">${pages.map(page => pageHTML(page, pk =>
     inList.has(pk.id) ? tileHTML(pk) : `<div class="tile ghost" aria-hidden="true">${pad(pk.id)}</div>`)).join('')}</div>`;
+}
+// grupy wg dnia dodania (najnowsze najpierw); elementy muszą być już posortowane
+function dayKey(ts) {
+  return ts && ts > 946684800000 ? new Date(ts).toLocaleDateString(LANG === 'pl' ? 'pl-PL' : 'en-US', { dateStyle: 'long' }) : t('noDate');
+}
+function dayGroupsHTML(items, tsOf, cellHTML, wrapClass = 'flat') {
+  const groups = new Map();
+  for (const it of items) {
+    const k = dayKey(tsOf(it));
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(it);
+  }
+  return [...groups].map(([day, arr]) => `<section class="group"><div class="page-head"><b>${esc(day)}</b><span>${arr.length}</span></div>
+    <div class="${wrapClass}">${arr.map(cellHTML).join('')}</div></section>`).join('');
 }
 function refreshTile(id) {
   const el = document.querySelector(`.tile[data-id="${id}"]`);
@@ -543,7 +582,7 @@ function addCard(dex, cardId, variant) {
   const fromWish = removeFromWish(cardId);
   if (!dex) { S.store.other.push({ id: cardId, v: variant || 'Normal', t: Date.now() }); saveStore(); return fromWish; }
   setOwned(dex, true);
-  S.store.owned[dex].cards.push({ id: cardId, v: variant || 'Normal' });
+  S.store.owned[dex].cards.push({ id: cardId, v: variant || 'Normal', t: Date.now() });
   saveStore();
   return fromWish;
 }
@@ -1207,6 +1246,8 @@ function bindEvents() {
     }
     const setRow = e.target.closest('[data-set]');
     if (setRow) { openSet(setRow.dataset.set); return; }
+    const albumSortBtn = e.target.closest('[data-album-sort]');
+    if (albumSortBtn) { S.store.settings.albumSort = albumSortBtn.dataset.albumSort; saveStore(); renderGrid(); return; }
     const showBtn = e.target.closest('[data-sets-show]');
     if (showBtn) { S.store.settings.setsShow = showBtn.dataset.setsShow; saveStore(); renderGrid(); return; }
     const tile = e.target.closest('.tile[data-id]');

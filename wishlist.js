@@ -33,8 +33,15 @@ function renderWish(grid) {
   const idx = ownedIndex();
   const all = S.store.wish
     .map(w => ({ w, c: S.cardById.get(w.id) }))
-    .filter(x => x.c)
-    .sort((a, b) => b.w.t - a.w.t);
+    .filter(x => x.c);
+  const ws = setting('wishSort') || 'new';
+  const cmp = {
+    new: (a, b) => b.w.t - a.w.t,
+    old: (a, b) => a.w.t - b.w.t,
+    name: (a, b) => a.c.name.localeCompare(b.c.name, 'en') || (b.c.set.date || '').localeCompare(a.c.set.date || ''),
+    set: (a, b) => (b.c.set.date || '').localeCompare(a.c.set.date || '') || a.c.set.i - b.c.set.i || numSort(a.c, b.c),
+  }[ws] || ((a, b) => b.w.t - a.w.t);
+  all.sort(cmp);
   const list = all.filter(x => !q || norm(`${x.c.name} ${x.c.set.name} ${x.c.set.code} ${x.c.set.id} ${x.c.num}`).includes(q));
   // wartość listy z zapisanych cen (bez zapytań do API)
   let sum = 0, cur = null;
@@ -47,7 +54,9 @@ function renderWish(grid) {
   }
   $('#status').textContent = t('wishStatus', all.length, cur ? fmtMoney(sum, cur) : '');
   if (!all.length) { grid.innerHTML = `<p class="empty">${t('wishEmpty')}</p>`; return; }
-  grid.innerHTML = `<div class="wish-cards">${list.map(({ c }) => {
+  const chips = `<div class="summary-chips sets-show">${[['new', t('wishNewest')], ['old', t('wishOldest')], ['name', t('wishByName')], ['set', t('wishBySet')]]
+    .map(([v, l]) => `<button data-wish-sort="${v}" aria-pressed="${ws === v}">${l}</button>`).join('')}</div>`;
+  const cell = ({ c }) => {
     const have = idx.get(c.id) || 0;
     return `<button class="wcard" data-card="${esc(c.id)}" aria-label="${esc(c.name)} ${esc(c.set.name)} ${esc(c.num)}">
       <span class="scard">
@@ -59,12 +68,18 @@ function renderWish(grid) {
       </span>
       <span class="wcap"><b>${esc(c.name)}</b><small>${esc(c.set.name)} · ${esc(c.rarity || '—')}</small></span>
     </button>`;
-  }).join('')}</div>`;
+  };
+  // wg daty: grupy dni dodania; wg nazwy/zestawu: jedna siatka
+  grid.innerHTML = chips + (ws === 'new' || ws === 'old'
+    ? dayGroupsHTML(list, x => x.w.t, cell, 'wish-cards')
+    : `<div class="wish-cards">${list.map(cell).join('')}</div>`);
 }
 
 function bindWish() {
   $('#grid').addEventListener('click', e => {
     if (setting('view') !== 'wish') return;
+    const sb = e.target.closest('[data-wish-sort]');
+    if (sb) { S.store.settings.wishSort = sb.dataset.wishSort; saveStore(); renderGrid(); return; }
     const c = e.target.closest('.wcard[data-card]');
     if (c) openCardDialog(c.dataset.card);
   });
