@@ -323,3 +323,146 @@ function bindPrices() {
     if (card) renderPriceBox(card, true);
   });
 }
+
+// ===== Ceny całego zestawu i Top 3 =====
+// GET /sets (lista zestawów PokéWallet) + GET /sets/{set_id}?limit=200&page=N (karty zestawu z cenami).
+// Oba endpointy są w darmowym planie (wg oficjalnego SDK). 1 zapytanie na listę zestawów (pamiętana 7 dni)
+// + 1–2 na zestaw; ceny wszystkich kart trafiają do zwykłej pamięci cen (priceCache).
+PW.setsLS = 'pokedex-tcg:pwsets';
+PW.setMetaLS = 'pokedex-tcg:setprices';
+function pwSetMeta() {
+  try { return JSON.parse(localStorage.getItem(PW.setMetaLS) || '{}') || {}; } catch { return {}; }
+}
+function savePwSetMeta(m) { try { localStorage.setItem(PW.setMetaLS, JSON.stringify(m)); } catch { /* pełny storage */ } }
+async function pwSetList() {
+  try {
+    const c = JSON.parse(localStorage.getItem(PW.setsLS) || 'null');
+    if (c && Date.now() - c.at < 7 * 24 * 3600e3 && Array.isArray(c.sets)) return c.sets;
+  } catch { /* brak */ }
+  const body = await pwGet('/sets');
+  const sets = (Array.isArray(body?.data) ? body.data : []).map(s => ({
+    id: String(s.set_id ?? s.id ?? ''), code: s.set_code || '', name: s.name || s.set_name || '',
+    lang: s.language || '', date: s.release_date || '', count: +(s.card_count ?? s.total_cards ?? 0) || 0,
+  })).filter(s => s.id);
+  try { localStorage.setItem(PW.setsLS, JSON.stringify({ at: Date.now(), sets })); } catch { /* pełny storage */ }
+  return sets;
+}
+// dopasowanie naszego zestawu (pokemon-tcg-data) do zestawu PokéWallet (nazwy z TCGplayer, np. „SV: Scarlet & Violet 151”)
+function matchPwSet(set, list) {
+  const ourCount = (S.cardsBySet.get(set.id) || []).length;
+  let best = null, bestS = 0;
+  for (const s of list) {
+    if (s.lang && !/^(en|eng|english)$/i.test(s.lang)) continue;
+    let sc = setSim(set.name, s.name) * 3;
+    if (set.code && s.code && s.code.toLowerCase() === set.code.toLowerCase()) sc += 3;
+    if (set.date && s.date) {
+      const days = Math.abs(Date.parse(s.date.slice(0, 10)) - Date.parse(set.date)) / 864e5;
+      if (days <= 3) sc += 2; else if (days <= 45) sc += 0.5;
+    }
+    if (s.count && (s.count === ourCount || s.count === set.total)) sc += 1;
+    if (sc > bestS) { bestS = sc; best = s; }
+  }
+  return bestS >= 3 ? best : null;
+}
+// pobierz ceny wszystkich kart zestawu i zapisz je przy naszych kartach
+async function fetchSetPrices(set) {
+  const pwSet = matchPwSet(set, await pwSetList());
+  const meta = pwSetMeta();
+  if (!pwSet) {
+    meta[set.id] = { at: Date.now(), none: true };
+    savePwSetMeta(meta);
+    throw new PwError(404, t('topNoSet'));
+  }
+  const items = [];
+  for (let page = 1, pages = 1; page <= pages && page <= 5; page++) {
+    const body = await pwGet(`/sets/${encodeURIComponent(pwSet.id)}`, { limit: 200, page });
+    if (body?.disambiguation) throw new PwError(300, t('topNoSet'));
+    items.push(...(Array.isArray(body?.cards) ? body.cards : []));
+    const pg = body?.pagination || {};
+    pages = +pg.total_pages || (pg.total && pg.limit ? Math.ceil(pg.total / pg.limit) : 1);
+  }
+  // przypisz produkty PokéWallet do naszych kart: numer + nazwa (przy kilku produktach z tym samym numerem
+  // — np. reverse z Poké Ball jako osobny produkt — łączymy wiersze cen)
+  const ours = S.cardsBySet.get(set.id) || [];
+  const byNum = new Map();
+  for (const c of ours) {
+    if (!byNum.has(c.nn)) byNum.set(c.nn, []);
+    byNum.get(c.nn).push(c);
+  }
+  const cache = priceCache(), now = Date.now();
+  const merged = new Map();
+  for (const raw of items) {
+    const e = pwTrim(raw);
+    if (!e) continue;
+    const cands = byNum.get(pwCardNum(e.number)) || [];
+    if (!cands.length) continue;
+    const c = cands.length === 1 ? cands[0]
+      : cands.slice().sort((a, b) => (norm(e.name).includes(norm(b.name)) ? 1 : 0) - (norm(e.name).includes(norm(a.name)) ? 1 : 0))[0];
+    const prev = merged.get(c.id);
+    if (prev) { prev.tcg.push(...e.tcg); prev.cm.push(...e.cm); } else merged.set(c.id, { ...e, setName: e.setName || pwSet.name });
+  }
+  for (const [id, e] of merged) cache[id] = { at: now, pw: e };
+  savePriceCache();
+  meta[set.id] = { at: now, pwId: pwSet.id, pwName: pwSet.name, matched: merged.size };
+  savePwSetMeta(meta);
+  return merged.size;
+}
+// najwyższa cena karty w wybranym źródle (dowolny wariant); bez ceny w źródle — drugie źródło
+function maxCardValue(cardId, src = priceSource()) {
+  const e = priceCache()[cardId]?.pw;
+  if (!e) return null;
+  const best = (rows, valueOf, cur) => {
+    let b = null;
+    for (const r of rows) { const v = valueOf(r); if (v != null && (!b || v > b.value)) b = { value: v, cur, row: r }; }
+    return b;
+  };
+  const cm = () => best(e.cm, cmValue, 'EUR'), tcg = () => best(e.tcg, tcgValue, 'USD');
+  return (src === 'tcg' ? tcg() || cm() : cm() || tcg());
+}
+function topCardsOfSet(set, n = 3) {
+  const src = priceSource();
+  const rows = [];
+  for (const c of S.cardsBySet.get(set.id) || []) {
+    const v = maxCardValue(c.id, src);
+    if (v) rows.push({ c, ...v });
+  }
+  // porównujemy w jednej walucie: najpierw karty z ceną w wybranym źródle
+  const want = src === 'tcg' ? 'USD' : 'EUR';
+  rows.sort((a, b) => (b.cur === want) - (a.cur === want) || b.value - a.value);
+  return { top: rows.slice(0, n), priced: rows.length };
+}
+// „reverse_holo” → „Reverse Holo”, „Holofoil” bez zmian
+const prettyVariant = v => String(v).replace(/[_-]+/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
+function setTopHTML(set) {
+  if (!pwKey()) return '';
+  const meta = pwSetMeta()[set.id];
+  const { top, priced } = topCardsOfSet(set);
+  const total = (S.cardsBySet.get(set.id) || []).length;
+  const btn = `<button class="btn ${meta?.at ? 'ghost' : ''} small" data-set-top="${esc(set.id)}">${meta?.at ? t('pwRefresh') : t('topFetch')}</button>`;
+  const rows = top.map((x, i) => `<li class="crow">
+      <span class="top-rank">${i + 1}</span>
+      <img class="thumb" loading="lazy" src="${esc(x.c.img)}" onerror="this.style.visibility='hidden'" alt="" data-card="${esc(x.c.id)}">
+      <button class="info" data-card="${esc(x.c.id)}"><b>${esc(x.c.name)}</b><span><span class="num">${esc(x.c.num)}${set.total ? '/' + set.total : ''}</span> · ${esc(x.c.rarity || '—')}${x.row?.v ? ' · ' + esc(prettyVariant(x.row.v)) : ''}</span></button>
+      <span class="top-price">${fmtMoney(x.value, x.cur)}</span>
+    </li>`).join('');
+  return `<section class="section set-top" id="setTop">
+    <h3>${t('topTitle')} <small>${priced ? t('topFrom', priced, total, meta?.at ? fmtDate(meta.at) : '') : ''}</small></h3>
+    ${top.length ? `<ul class="clist">${rows}</ul>` : `<p class="muted small">${meta?.none ? t('topNoSet') : meta?.at ? t('topNone') : t('topHint')}</p>`}
+    <div class="btn-row">${btn}</div>
+    <p class="pw-err small" id="setTopErr" hidden></p>${PW_ATTR}
+  </section>`;
+}
+async function loadSetTop(setId, btn) {
+  const set = S.sets.find(s => s.id === setId);
+  if (!set) return;
+  btn.disabled = true;
+  btn.textContent = t('topLoading');
+  try {
+    await fetchSetPrices(set);
+    if (typeof renderSetView === 'function') renderSetView();
+  } catch (e) {
+    if (typeof renderSetView === 'function') renderSetView();
+    const err = $('#setTopErr');
+    if (err && e.status !== 404) { err.textContent = e.message; err.hidden = false; } // 404 = komunikat już w sekcji
+  }
+}

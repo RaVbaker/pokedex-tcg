@@ -6,7 +6,7 @@
 
 // ===== Stałe =====
 // Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
-const APP_VERSION = '10';
+const APP_VERSION = '11';
 const APP_DATE = '2026-11-02';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
@@ -46,6 +46,9 @@ const I18N = {
     notOwnedGroup: 'Jeszcze nie mam', noDate: 'Bez daty', albumPages: 'Strony albumu', albumAdded: 'Ostatnio dodane',
     wishNewest: 'Najnowsze', wishOldest: 'Najstarsze', wishByName: 'Nazwa', wishBySet: 'Zestaw',
     sortByValue: 'Wartość ↓', sortByNum: 'Numer', noPriceGroup: 'Bez zapisanej ceny',
+    topTitle: 'Najdroższe w zestawie', topFetch: 'Pobierz ceny zestawu', topLoading: 'Pobieram ceny zestawu…',
+    topFrom: (n, total, d) => `ceny ${n} z ${total} kart${d ? ` · ${d}` : ''}`, topNoSet: 'Nie znaleziono tego zestawu w PokéWallet.',
+    topNone: 'Brak cen dla kart z tego zestawu.', topHint: 'Jedno–dwa zapytania pobiorą ceny wszystkich kart z zestawu (Top 3 i sortowanie wg wartości).',
     valueGroup: v => `Wycenione · razem ${v}`, valueHint: 'Wartość z zapisanych cen — brakujące pobierzesz w ⚙︎ → Ceny kart → „Wyceń kolekcję”.',
     clearFilters: 'Wyczyść filtry', done: 'Gotowe', loading: 'Ładowanie danych…',
     loadError: 'Nie udało się wczytać danych. Otwórz stronę przez serwer HTTP (nie file://).',
@@ -140,6 +143,9 @@ const I18N = {
     notOwnedGroup: 'Not owned yet', noDate: 'No date', albumPages: 'Binder pages', albumAdded: 'Recently added',
     wishNewest: 'Newest', wishOldest: 'Oldest', wishByName: 'Name', wishBySet: 'Set',
     sortByValue: 'Value ↓', sortByNum: 'Number', noPriceGroup: 'No saved price',
+    topTitle: 'Most valuable in set', topFetch: 'Fetch set prices', topLoading: 'Fetching set prices…',
+    topFrom: (n, total, d) => `prices for ${n} of ${total} cards${d ? ` · ${d}` : ''}`, topNoSet: 'This set was not found in PokéWallet.',
+    topNone: 'No prices for cards in this set.', topHint: 'One or two requests fetch prices for every card in the set (Top 3 and value sorting).',
     valueGroup: v => `Priced · total ${v}`, valueHint: 'Value from saved prices — fetch missing ones in ⚙︎ → Card prices → “Value my collection”.',
     clearFilters: 'Clear filters', done: 'Done', loading: 'Loading data…',
     loadError: 'Could not load data. Open the page through an HTTP server (not file://).',

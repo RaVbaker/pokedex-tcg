@@ -106,10 +106,15 @@ function renderSetView() {
   // sortowanie wg wartości (malejąco) — tylko z kluczem API; bez ceny na końcu wg numeru
   const hasPrices = typeof pwKey === 'function' && !!pwKey();
   const sortVal = hasPrices && setting('setSort') === 'value';
+  // wartość karty: posiadane — cena posiadanego wariantu, pozostałe — najwyższa cena karty;
+  // niezależnie od tego, czy karta jest sekretna; jedna waluta (wybrane źródło) przed drugą
+  const want = priceSource() === 'tcg' ? 'USD' : 'EUR';
   const valOf = c => {
     const mine = idx.get(c.id) ? allOwnedCopies().filter(o => o.id === c.id) : [];
-    const vals = (mine.length ? mine.map(o => cardValue(c.id, o.v)) : [cardValue(c.id, null)]).filter(Boolean);
-    return vals.length ? Math.max(...vals.map(v => v.value)) : -1;
+    const vals = (mine.length ? mine.map(o => cardValue(c.id, o.v)) : [maxCardValue(c.id)]).filter(Boolean);
+    if (!vals.length) return -1;
+    const v = vals.reduce((a, b) => (b.value > a.value ? b : a));
+    return v.cur === want ? 1e6 + v.value : v.value; // ceny w drugiej walucie po cenach w wybranej
   };
   if (sortVal) {
     const v = new Map(list.map(c => [c.id, valOf(c)]));
@@ -132,6 +137,7 @@ function renderSetView() {
         ${setValueLine(set)}
       </div>
     </div>
+    ${setTopHTML(set)}
     <div class="summary-chips">${chip('all', t('showAll'), cards.length)}${chip('missing', t('showMissing'), cards.length - pr.allHave)}${chip('owned', t('showOwned'), pr.allHave)}</div>
     ${sortChips}${sortVal ? `<p class="muted small value-hint">${t('valueHint')}</p>` : ''}
     <div class="set-cards">${list.map(c => {
@@ -153,6 +159,8 @@ function bindSets() {
   $('#setInner').addEventListener('click', e => {
     const sh = e.target.closest('[data-show]');
     if (sh) { SETV.show = sh.dataset.show; renderSetView(); return; }
+    const top = e.target.closest('[data-set-top]');
+    if (top) { loadSetTop(top.dataset.setTop, top); return; }
     const ss = e.target.closest('[data-set-sort]');
     if (ss) { S.store.settings.setSort = ss.dataset.setSort; saveStore(); renderSetView(); return; }
     const c = e.target.closest('[data-card]');
