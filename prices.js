@@ -278,9 +278,20 @@ function fmtMoney(v, cur) {
   catch { return `${v.toFixed(2)} ${cur}`; }
 }
 // mała etykieta z ceną (tylko z cache — bez zapytań)
+// cena starsza niż „Ceny aktualne przez” (⚙︎) — pokazywana jako nieświeża; w planie darmowym nie jest
+// odświeżana automatycznie, tylko po „Wyceń kolekcję”, „Wyceń kolejne / Pobierz ceny zestawu” albo „Odśwież”
+function isStale(cardId) {
+  const c = priceCache()[cardId];
+  return !!(c && Date.now() - c.at >= pwTtlMs());
+}
+function staleAttr(stale, at) {
+  return stale ? ` title="${esc(t('staleTitle', at ? fmtDate(at) : '?'))}"` : '';
+}
 function priceTag(cardId, variant) {
   const v = cardValue(cardId, variant);
-  return v ? `<span class="price-tag">${fmtMoney(v.value, v.cur)}</span>` : '';
+  if (!v) return '';
+  const st = isStale(cardId);
+  return `<span class="price-tag${st ? ' stale' : ''}"${staleAttr(st, priceCache()[cardId]?.at)}>${fmtMoney(v.value, v.cur)}</span>`;
 }
 // suma wartości egzemplarzy (tylko w wybranej walucie)
 function valueOfCopies(copies) {
@@ -301,7 +312,8 @@ const PW_ATTR = '<a class="pw-attr" href="https://pokewallet.io" target="_blank"
 function priceBoxHTML(card, c) {
   const e = c?.pw;
   const when = c?.at ? new Date(c.at).toLocaleString(LANG === 'pl' ? 'pl-PL' : 'en-US', { dateStyle: 'short', timeStyle: 'short' }) : '';
-  const head = `<div class="pw-head"><b>${t('pwPrices')}</b><span class="muted small">${when ? t('pwUpdated', when) : ''}</span>
+  const st = c?.at && Date.now() - c.at >= pwTtlMs();
+  const head = `<div class="pw-head"><b>${t('pwPrices')}</b><span class="muted small">${when ? t('pwUpdated', when) : ''}</span>${st ? `<span class="stale-note">${t('staleShort')}</span>` : ''}
     <button class="btn ghost small" data-price-refresh="${esc(card.id)}">${t('pwRefresh')}</button></div>`;
   if (!e) return `${head}<p class="muted small">${t('pwNotFound')}</p>${PW_ATTR}`;
   const m = (v, cur) => (v == null ? '—' : fmtMoney(v, cur));
@@ -324,7 +336,8 @@ async function renderPriceBox(card, force = false) {
   const cached = priceCache()[card.id];
   const fresh = cached && Date.now() - cached.at < pwTtlMs();
   if (!force) box.innerHTML = cached ? priceBoxHTML(card, cached) : `<p class="muted small">${t('pwLoading')}</p>`;
-  if (fresh && !force) return;
+  // plan darmowy: nieświeża cena zostaje (oznaczona) — bez automatycznego zapytania; Pro odświeża sam
+  if (!force && cached && (fresh || pwPlan() !== 'pro')) return;
   try {
     const r = await getPrice(card, { force });
     const still = $('#priceBox');
@@ -355,7 +368,8 @@ function renderValueStatus(extra = '') {
   const cache = priceCache();
   const dates = [...new Set(copies.map(c => c.id))].map(id => cache[id]?.at).filter(Boolean);
   const range = dates.length ? ' ' + t('pwDates', fmtDate(Math.min(...dates)), fmtDate(Math.max(...dates))) : '';
-  $('#pwStatus').textContent = (copies.length ? t('pwValue', fmtMoney(sum, cur), priced, copies.length, stale) + range : '') + quotaText() + (extra ? ' ' + extra : '');
+  const staleN = [...new Set(copies.map(c => c.id))].filter(isStale).length;
+  $('#pwStatus').textContent = (copies.length ? t('pwValue', fmtMoney(sum, cur), priced, copies.length, stale) + range + (staleN ? ' ' + t('staleCount', staleN) : '') : '') + quotaText() + (extra ? ' ' + extra : '');
 }
 // karty do wyceny: najpierw bez żadnej ceny, potem z ceną starszą niż ustawiona ważność
 function pendingCards() {
@@ -644,7 +658,7 @@ function setTopHTML(set) {
       <span class="top-rank">${i + 1}</span>
       <img class="thumb" loading="lazy" src="${esc(x.c.img)}" onerror="this.style.visibility='hidden'" alt="" data-card="${esc(x.c.id)}">
       <button class="info" data-card="${esc(x.c.id)}"><b>${esc(x.c.name)}</b><span><span class="num">${esc(x.c.num)}${set.total ? '/' + set.total : ''}</span> · ${esc(x.c.rarity || '—')}${x.row?.v ? ' · ' + esc(prettyVariant(x.row.v)) : ''}</span></button>
-      <span class="top-price">${fmtMoney(x.value, x.cur)}</span>
+      <span class="top-price${isStale(x.c.id) ? ' stale' : ''}"${staleAttr(isStale(x.c.id), priceCache()[x.c.id]?.at)}>${fmtMoney(x.value, x.cur)}</span>
     </li>`).join('');
   // zwijanie do jednego wiersza (wybór zapamiętany w ustawieniach)
   const collapsed = !!setting('topCollapsed');
@@ -655,7 +669,7 @@ function setTopHTML(set) {
     </button>`;
   if (collapsed) {
     const line = top.length
-      ? top.map((x, i) => `<b>${i + 1}.</b> ${esc(x.c.name)} <span class="top-price">${fmtMoney(x.value, x.cur)}</span>`).join(' · ')
+      ? top.map((x, i) => `<b>${i + 1}.</b> ${esc(x.c.name)} <span class="top-price${isStale(x.c.id) ? ' stale' : ''}">${fmtMoney(x.value, x.cur)}</span>`).join(' · ')
       : esc(meta?.none ? t('topNoSet') : meta?.at ? t('topNone') : t('topHint'));
     return `<section class="section set-top collapsed" id="setTop">${head}<p class="top-line">${line}</p></section>`;
   }
