@@ -71,6 +71,15 @@ function fmtClock(ts) {
   const time = d.toLocaleTimeString(LANG === 'pl' ? 'pl-PL' : 'en-US', { hour: '2-digit', minute: '2-digit' });
   return d.toDateString() === today.toDateString() ? time : `${d.toLocaleDateString(LANG === 'pl' ? 'pl-PL' : 'en-US', { day: 'numeric', month: 'short' })} ${time}`;
 }
+// pasek postępu zapytań (i z n)
+function setProgressBar(el, i, n) {
+  if (!el) return;
+  el.hidden = !n;
+  const bar = el.querySelector('span');
+  if (bar) bar.style.width = n ? `${Math.round(i / n * 100)}%` : '0';
+  el.setAttribute('aria-valuenow', String(i));
+  el.setAttribute('aria-valuemax', String(n));
+}
 // opis limitu do ustawień (HTML)
 function quotaInfoHTML() {
   if (!pwKey()) return '';
@@ -365,11 +374,13 @@ async function valueCollection() {
     for (let i = 0; i < todo.length; i++) {
       $('#pwStatus').textContent = t('pwValuing', i + 1, todo.length) + quotaText();
       btn.textContent = t('pwValuing', i + 1, todo.length);
+      setProgressBar($('#pwProgress'), i, todo.length);
       try { await getPrice(S.cardById.get(todo[i])); done++; }
       catch (e) { err = e.message; if ([429, 401, 403, -1, 0].includes(e.status)) break; }
     }
   } finally {
     PW.valuing = false;
+    setProgressBar($('#pwProgress'), 0, 0);
     btn.disabled = false;
     btn.textContent = t('pwValueBtn');
     renderValueStatus(err);
@@ -646,6 +657,7 @@ function setTopHTML(set) {
     ${head}
     ${top.length ? `<ul class="clist">${rows}</ul>` : `<p class="muted small">${meta?.none ? t('topNoSet') : meta?.at ? t('topNone') : t('topHint')}</p>`}
     ${meta?.mode === 'free' || (!meta?.mode && pwPlan() === 'free') ? `<p class="muted small">${t('topFreeNote')}</p>` : ''}
+    <div class="req-progress" id="setTopProgress" role="progressbar" aria-valuemin="0" hidden><span></span></div>
     <div class="btn-row">${btn}</div>
     <p class="pw-err small" id="setTopErr" hidden></p>${PW_ATTR}
   </section>`;
@@ -656,7 +668,8 @@ async function loadSetTop(setId, btn) {
   btn.disabled = true;
   btn.textContent = t('topLoading');
   try {
-    const r = await fetchSetPrices(set, (i, n) => { btn.textContent = t('topPricing', i, n); });
+    const bar = $('#setTopProgress');
+    const r = await fetchSetPrices(set, (i, n) => { btn.textContent = t('topPricing', i, n); setProgressBar(bar, i - 1, n); });
     if (typeof renderSetView === 'function') renderSetView();
     toast(r.mode === 'pro' ? t('topDonePro', r.priced) : r.fetched ? t('topDoneFree', r.priced, r.fetched) : t('topAllFresh'));
   } catch (e) {
