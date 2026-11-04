@@ -102,7 +102,22 @@ function renderSetView() {
   const pr = setProgress(set);
   const idx = ownedIndex();
   const cards = (S.cardsBySet.get(set.id) || []).slice().sort(numSort);
-  const list = cards.filter(c => SETV.show === 'all' || (SETV.show === 'owned') === idx.has(c.id));
+  let list = cards.filter(c => SETV.show === 'all' || (SETV.show === 'owned') === idx.has(c.id));
+  // sortowanie wg wartości (malejąco) — tylko z kluczem API; bez ceny na końcu wg numeru
+  const hasPrices = typeof pwKey === 'function' && !!pwKey();
+  const sortVal = hasPrices && setting('setSort') === 'value';
+  const valOf = c => {
+    const mine = idx.get(c.id) ? allOwnedCopies().filter(o => o.id === c.id) : [];
+    const vals = (mine.length ? mine.map(o => cardValue(c.id, o.v)) : [cardValue(c.id, null)]).filter(Boolean);
+    return vals.length ? Math.max(...vals.map(v => v.value)) : -1;
+  };
+  if (sortVal) {
+    const v = new Map(list.map(c => [c.id, valOf(c)]));
+    list = list.slice().sort((a, b) => v.get(b.id) - v.get(a.id) || numSort(a, b));
+  }
+  const sortChips = hasPrices
+    ? `<div class="summary-chips">${[['num', t('sortByNum')], ['value', t('sortByValue')]].map(([val, l]) =>
+      `<button data-set-sort="${val}" aria-pressed="${(sortVal ? 'value' : 'num') === val}">${l}</button>`).join('')}</div>` : '';
   const pct = pr.base ? Math.round(pr.baseHave / pr.base * 100) : 0;
   $('#setTitle').textContent = set.name;
   const chip = (val, label, n) => `<button data-show="${val}" aria-pressed="${SETV.show === val}">${label}<b>${n}</b></button>`;
@@ -118,6 +133,7 @@ function renderSetView() {
       </div>
     </div>
     <div class="summary-chips">${chip('all', t('showAll'), cards.length)}${chip('missing', t('showMissing'), cards.length - pr.allHave)}${chip('owned', t('showOwned'), pr.allHave)}</div>
+    ${sortChips}${sortVal ? `<p class="muted small value-hint">${t('valueHint')}</p>` : ''}
     <div class="set-cards">${list.map(c => {
       const n = idx.get(c.id) || 0;
       const secret = pr.secret > 0 && !(/^\d+$/.test(c.num) && parseInt(c.num, 10) <= set.total);
@@ -137,6 +153,8 @@ function bindSets() {
   $('#setInner').addEventListener('click', e => {
     const sh = e.target.closest('[data-show]');
     if (sh) { SETV.show = sh.dataset.show; renderSetView(); return; }
+    const ss = e.target.closest('[data-set-sort]');
+    if (ss) { S.store.settings.setSort = ss.dataset.setSort; saveStore(); renderSetView(); return; }
     const c = e.target.closest('[data-card]');
     if (c) openCardDialog(c.dataset.card);
   });

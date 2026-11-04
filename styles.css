@@ -565,3 +565,11 @@ button.scan-side { border: 0; background: transparent; color: #fff; padding: 0; 
 .sheet-head h2 { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .icon-btn.wish-head { color: #e0457b; }
 .icon-btn.wish-head.on { background: #fde7ef; }
+
+/* Sortowanie wg wartości */
+.tile-value {
+  position: absolute; right: 4px; bottom: 4px; z-index: 3; font-size: 11px; font-weight: 800;
+  color: #1d5a35; background: #dff3e6; border-radius: 6px; padding: 1px 5px; box-shadow: 0 1px 2px rgb(0 0 0 / .25);
+  font-variant-numeric: tabular-nums;
+}
+.value-hint { margin: -4px 0 10px; }
