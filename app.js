@@ -6,8 +6,8 @@
 
 // ===== Stałe =====
 // Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
-const APP_VERSION = '16';
-const APP_DATE = '2026-11-05';
+const APP_VERSION = '17';
+const APP_DATE = '2026-11-04';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
 const ART = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
@@ -150,6 +150,13 @@ const I18N = {
     pwValuing: (i, n) => `Wyceniam… ${i}/${n}`,
     pwValue: (v, p, n, left) => `Wartość kolekcji: ${v} (wycenione ${p} z ${n} kart${left ? `, do wyceny jeszcze ${left} — kliknij ponownie` : ''}).`,
     pwCacheCleared: 'Usunięto zapisane ceny.',
+    pwBackupHint: 'Zapisane ceny są w pamięci przeglądarki. Zrób kopię, żeby nie pobierać ich ponownie (np. na innym urządzeniu).',
+    pwExport: 'Eksport cen',
+    pwImport: 'Import cen',
+    pwExported: n => `Wyeksportowano ceny ${n} kart.`,
+    pwImported: (n, u) => `Zaimportowano ceny: ${n} nowych, ${u} zaktualizowanych.`,
+    pwImportBad: 'to nie jest plik z cenami Pokédex TCG.',
+    pwImportError: 'Nie udało się zaimportować cen: ',
     pwVariant: 'Wariant', pwMarket: 'Rynkowa', pwTrend: 'Trend', pwLow: 'Min', pwHigh: 'Maks', pwAvg30: 'Śr. 30 dni',
     pwOwnedValue: (v, p) => `Wartość moich kart: ${v} (wycenione: ${p})`,
     variants: { Other: 'Inny' },
@@ -269,6 +276,13 @@ const I18N = {
     pwValuing: (i, n) => `Pricing… ${i}/${n}`,
     pwValue: (v, p, n, left) => `Collection value: ${v} (${p} of ${n} cards priced${left ? `, ${left} still to price — click again` : ''}).`,
     pwCacheCleared: 'Saved prices cleared.',
+    pwBackupHint: 'Saved prices live in browser storage. Back them up so you don’t have to fetch them again (e.g. on another device).',
+    pwExport: 'Export prices',
+    pwImport: 'Import prices',
+    pwExported: n => `Exported prices of ${n} cards.`,
+    pwImported: (n, u) => `Imported prices: ${n} new, ${u} updated.`,
+    pwImportBad: 'not a Pokédex TCG prices file.',
+    pwImportError: 'Could not import prices: ',
     pwVariant: 'Variant', pwMarket: 'Market', pwTrend: 'Trend', pwLow: 'Low', pwHigh: 'High', pwAvg30: '30-day avg',
     pwOwnedValue: (v, p) => `My cards value: ${v} (${p} priced)`,
     variants: {},

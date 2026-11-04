@@ -275,6 +275,11 @@
           <button class="btn small" id="pwValue" data-i18n="pwValueBtn">Wyceń kolekcję</button>
           <button class="btn ghost small" id="pwCacheClear" data-i18n="pwCacheClear">Wyczyść zapisane ceny</button>
         </div>
+        <p class="muted small" data-i18n="pwBackupHint">Zapisane ceny są w pamięci przeglądarki. Zrób kopię, żeby nie pobierać ich ponownie (np. na innym urządzeniu).</p>
+        <div class="btn-row">
+          <button class="btn ghost small" id="pwExport" data-i18n="pwExport">Eksport cen</button>
+          <label class="btn ghost small file"><span data-i18n="pwImport">Import cen</span><input type="file" id="pwImport" accept=".json,application/json"></label>
+        </div>
         <div class="req-progress" id="pwProgress" role="progressbar" aria-valuemin="0" hidden><span></span></div>
         <p class="muted small" id="pwStatus" role="status"></p>
         <p class="small quota-info" id="pwQuota"></p>

@@ -449,6 +449,18 @@ function bindPrices() {
   $('#pwSetBudget').addEventListener('change', e => { S.store.settings.pwSetBudget = +e.target.value; saveStore(); });
   $('#pwTopN').addEventListener('change', e => { S.store.settings.topN = +e.target.value; saveStore(); if (typeof renderSetView === 'function' && !$('#setView').hidden) renderSetView(); });
   $('#pwTtl').addEventListener('change', e => { S.store.settings.pwTtl = +e.target.value; saveStore(); renderValueStatus(); });
+  $('#pwExport').addEventListener('click', exportPrices);
+  $('#pwImport').addEventListener('change', async e => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    try {
+      const n = importPrices(await f.text());
+      renderValueStatus(t('pwImported', n.prices, n.updated));
+      renderGrid();
+      if (typeof renderSetView === 'function' && !$('#setView').hidden) renderSetView();
+    } catch (err) { alert(t('pwImportError') + err.message); }
+  });
   $('#pwCacheClear').addEventListener('click', () => { PW.cache = {}; savePriceCache(); renderValueStatus(t('pwCacheCleared')); });
   // przycisk „Odśwież” w oknie karty
   $('#cardDlg').addEventListener('click', e => {
@@ -714,4 +726,45 @@ async function loadSetTop(setId, btn) {
     const err = $('#setTopErr');
     if (err && e.status !== 404) { err.textContent = e.message; err.hidden = false; } // 404 = komunikat już w sekcji
   }
+}
+
+// ===== Kopia zapasowa cen (JSON) =====
+// Ceny kosztują zapytania do API, więc można je przenieść na inne urządzenie / zachować przed wyczyszczeniem
+// danych przeglądarki. Plik zawiera pamięć cen, mapowanie kart na PokéWallet i dane zestawów — bez klucza API.
+function exportPrices() {
+  const data = {
+    app: 'pokedex-tcg', kind: 'prices', v: 1, at: Date.now(),
+    prices: priceCache(), pwmap: pwMap(), setprices: pwSetMeta(),
+    pwsets: (() => { try { return JSON.parse(localStorage.getItem(PW.setsLS) || 'null'); } catch { return null; } })(),
+  };
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `pokedex-tcg-ceny-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast(t('pwExported', Object.keys(data.prices).length));
+}
+// scala z tym, co już jest: przy tej samej karcie wygrywa świeższa cena
+function importPrices(text) {
+  const d = JSON.parse(text);
+  if (!d || d.app !== 'pokedex-tcg' || d.kind !== 'prices' || typeof d.prices !== 'object') throw new Error(t('pwImportBad'));
+  const cache = priceCache();
+  let added = 0, updated = 0;
+  for (const [id, e] of Object.entries(d.prices || {})) {
+    if (!e || typeof e.at !== 'number') continue;
+    const cur = cache[id];
+    if (!cur) { cache[id] = e; added++; } else if (e.at > (cur.at || 0)) { cache[id] = e; updated++; }
+  }
+  savePriceCache();
+  savePwMap({ ...(d.pwmap || {}), ...pwMap() });
+  const meta = pwSetMeta();
+  for (const [id, m] of Object.entries(d.setprices || {})) if (m && (!meta[id] || (m.at || 0) > (meta[id].at || 0))) meta[id] = m;
+  savePwSetMeta(meta);
+  try {
+    const cur = JSON.parse(localStorage.getItem(PW.setsLS) || 'null');
+    if (d.pwsets?.sets && (!cur || (d.pwsets.at || 0) > (cur.at || 0))) localStorage.setItem(PW.setsLS, JSON.stringify(d.pwsets));
+  } catch { /* pełny storage */ }
+  return { prices: added, updated };
 }
