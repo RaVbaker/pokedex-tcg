@@ -108,18 +108,22 @@ function renderSetView() {
   const sortVal = hasPrices && setting('setSort') === 'value';
   // wartość karty: posiadane — cena posiadanego wariantu, pozostałe — najwyższa cena karty;
   // niezależnie od tego, czy karta jest sekretna; jedna waluta (wybrane źródło) przed drugą
+  // Ta sama wartość jest pokazywana na plakietce i używana do sortowania (wcześniej plakietka brała
+  // pierwszą cenę z listy, a sortowanie najwyższą — stąd „dziwna” kolejność).
   const want = priceSource() === 'tcg' ? 'USD' : 'EUR';
-  const valOf = c => {
-    const mine = idx.get(c.id) ? allOwnedCopies().filter(o => o.id === c.id) : [];
+  const mineById = new Map();
+  if (hasPrices) for (const o of allOwnedCopies()) { if (!mineById.has(o.id)) mineById.set(o.id, []); mineById.get(o.id).push(o); }
+  const shown = new Map();
+  if (hasPrices) for (const c of list) {
+    const mine = mineById.get(c.id) || [];
     const vals = (mine.length ? mine.map(o => cardValue(c.id, o.v)) : [maxCardValue(c.id)]).filter(Boolean);
-    if (!vals.length) return -1;
-    const v = vals.reduce((a, b) => (b.value > a.value ? b : a));
-    return v.cur === want ? 1e6 + v.value : v.value; // ceny w drugiej walucie po cenach w wybranej
-  };
-  if (sortVal) {
-    const v = new Map(list.map(c => [c.id, valOf(c)]));
-    list = list.slice().sort((a, b) => v.get(b.id) - v.get(a.id) || numSort(a, b));
+    if (vals.length) shown.set(c.id, vals.reduce((a, b) => (b.value > a.value ? b : a)));
   }
+  const rank = c => { const v = shown.get(c.id); return !v ? -1 : v.cur === want ? 1e6 + v.value : v.value; };
+  if (sortVal) {
+    list = list.slice().sort((a, b) => rank(b) - rank(a) || numSort(a, b));
+  }
+  const tagOf = c => { const v = shown.get(c.id); return v ? `<span class="price-tag">${fmtMoney(v.value, v.cur)}</span>` : ''; };
   const sortChips = hasPrices
     ? `<div class="summary-chips">${[['num', t('sortByNum')], ['value', t('sortByValue')]].map(([val, l]) =>
       `<button data-set-sort="${val}" aria-pressed="${(sortVal ? 'value' : 'num') === val}">${l}</button>`).join('')}</div>` : '';
@@ -146,7 +150,7 @@ function renderSetView() {
       return `<button class="scard${n ? ' have' : inWish(c.id) ? ' wish' : ''}" data-card="${esc(c.id)}" aria-label="${esc(c.name)} ${esc(c.num)}">
         <span class="scard-fb"><b>${esc(c.num)}</b><span>${esc(c.name)}</span></span>
         <img loading="lazy" decoding="async" alt="" src="${esc(c.img)}" onerror="this.remove()">
-        <span class="scard-no${secret ? ' secret' : ''}">${esc(c.num)}</span>${priceTag(c.id, null)}
+        <span class="scard-no${secret ? ' secret' : ''}">${esc(c.num)}</span>${tagOf(c)}
         ${n ? `<span class="scard-check">${n > 1 ? n : '✓'}</span>` : inWish(c.id) ? '<span class="scard-wish" aria-hidden="true">♥</span>' : ''}
       </button>`;
     }).join('')}</div>`;

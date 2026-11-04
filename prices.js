@@ -293,6 +293,7 @@ function bindPrices() {
     $('#pwKey').value = pwKey();
     $('#pwKey').type = 'password';
     $('#pwSrc').value = priceSource();
+    $('#pwTopN').value = String(+setting('topN') || 3);
     $('#pwTtl').value = String(setting('pwTtl') ?? 7);
     $('#pwHint').innerHTML = t('pwHint');
     renderValueStatus();
@@ -313,6 +314,7 @@ function bindPrices() {
   $('#pwClear').addEventListener('click', () => { pwStoreKey(''); $('#pwKey').value = ''; $('#pwStatus').textContent = t('pwKeyRemoved'); });
   $('#pwSrc').addEventListener('change', e => { S.store.settings.priceSrc = e.target.value; saveStore(); renderValueStatus(); });
   $('#pwValue').addEventListener('click', valueCollection);
+  $('#pwTopN').addEventListener('change', e => { S.store.settings.topN = +e.target.value; saveStore(); if (typeof renderSetView === 'function' && !$('#setView').hidden) renderSetView(); });
   $('#pwTtl').addEventListener('change', e => { S.store.settings.pwTtl = +e.target.value; saveStore(); renderValueStatus(); });
   $('#pwCacheClear').addEventListener('click', () => { PW.cache = {}; savePriceCache(); renderValueStatus(t('pwCacheCleared')); });
   // przycisk „Odśwież” w oknie karty
@@ -436,7 +438,8 @@ const prettyVariant = v => String(v).replace(/[_-]+/g, ' ').replace(/\b\w/g, ch 
 function setTopHTML(set) {
   if (!pwKey()) return '';
   const meta = pwSetMeta()[set.id];
-  const { top, priced } = topCardsOfSet(set);
+  const n = +setting('topN') || 3;
+  const { top, priced } = topCardsOfSet(set, n);
   const total = (S.cardsBySet.get(set.id) || []).length;
   const btn = `<button class="btn ${meta?.at ? 'ghost' : ''} small" data-set-top="${esc(set.id)}">${meta?.at ? t('pwRefresh') : t('topFetch')}</button>`;
   const rows = top.map((x, i) => `<li class="crow">
@@ -446,7 +449,7 @@ function setTopHTML(set) {
       <span class="top-price">${fmtMoney(x.value, x.cur)}</span>
     </li>`).join('');
   return `<section class="section set-top" id="setTop">
-    <h3>${t('topTitle')} <small>${priced ? t('topFrom', priced, total, meta?.at ? fmtDate(meta.at) : '') : ''}</small></h3>
+    <h3>${t('topTitle', n)} <small>${priced ? t('topFrom', priced, total, meta?.at ? fmtDate(meta.at) : '') : ''}</small></h3>
     ${top.length ? `<ul class="clist">${rows}</ul>` : `<p class="muted small">${meta?.none ? t('topNoSet') : meta?.at ? t('topNone') : t('topHint')}</p>`}
     <div class="btn-row">${btn}</div>
     <p class="pw-err small" id="setTopErr" hidden></p>${PW_ATTR}
