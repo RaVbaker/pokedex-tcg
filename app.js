@@ -6,7 +6,7 @@
 
 // ===== Stałe =====
 // Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
-const APP_VERSION = '10';
+const APP_VERSION = '11';
 const APP_DATE = '2026-11-02';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
@@ -46,6 +46,9 @@ const I18N = {
     notOwnedGroup: 'Jeszcze nie mam', noDate: 'Bez daty', albumPages: 'Strony albumu', albumAdded: 'Ostatnio dodane',
     wishNewest: 'Najnowsze', wishOldest: 'Najstarsze', wishByName: 'Nazwa', wishBySet: 'Zestaw',
     sortByValue: 'Wartość ↓', sortByNum: 'Numer', noPriceGroup: 'Bez zapisanej ceny',
+    topTitle: n => `Top ${n} najdroższych w zestawie`, topN: 'Najdroższe w zestawie: ile kart', topFetch: 'Pobierz ceny zestawu', topLoading: 'Pobieram ceny zestawu…',
+    topFrom: (n, total, d) => `ceny ${n} z ${total} kart${d ? ` · ${d}` : ''}`, topNoSet: 'Nie znaleziono tego zestawu w PokéWallet.',
+    topNone: 'Brak cen dla kart z tego zestawu.', topHint: 'Jedno–dwa zapytania pobiorą ceny wszystkich kart z zestawu (najdroższe karty i sortowanie wg wartości).',
     valueGroup: v => `Wycenione · razem ${v}`, valueHint: 'Wartość z zapisanych cen — brakujące pobierzesz w ⚙︎ → Ceny kart → „Wyceń kolekcję”.',
     clearFilters: 'Wyczyść filtry', done: 'Gotowe', loading: 'Ładowanie danych…',
     loadError: 'Nie udało się wczytać danych. Otwórz stronę przez serwer HTTP (nie file://).',
@@ -100,6 +103,7 @@ const I18N = {
     cardAdded: 'Dodano kartę do kolekcji', variantSaved: 'Zapisano typ karty', saveFail: 'Nie udało się zapisać danych w przeglądarce',
     viewSets: 'Zestawy', searchPhSets: 'Szukaj zestawu: nazwa, kod, seria',
     setsStatus: (st, n, c) => `Rozpoczęte zestawy: ${st} z ${n} · ${nf(c)} ${plPlural(c, 'karta', 'karty', 'kart')}`,
+    setsValue: v => `wartość ${v}`, setValueShort: v => `wartość ${v}`,
     setsAll: 'Wszystkie', setsStarted: 'Rozpoczęte', setsDone: 'Ukończone', setsNone: 'Brak zestawów.',
     secret: (h, n) => `+ sekretne ${h}/${n}`, complete: 'Komplet!', setCards: 'Karty w zestawie',
     showAll: 'Wszystkie', showMissing: 'Brakuje', showOwned: 'Mam', back: 'Wstecz',
@@ -140,6 +144,9 @@ const I18N = {
     notOwnedGroup: 'Not owned yet', noDate: 'No date', albumPages: 'Binder pages', albumAdded: 'Recently added',
     wishNewest: 'Newest', wishOldest: 'Oldest', wishByName: 'Name', wishBySet: 'Set',
     sortByValue: 'Value ↓', sortByNum: 'Number', noPriceGroup: 'No saved price',
+    topTitle: n => `Top ${n} most valuable in set`, topN: 'Most valuable in set: how many', topFetch: 'Fetch set prices', topLoading: 'Fetching set prices…',
+    topFrom: (n, total, d) => `prices for ${n} of ${total} cards${d ? ` · ${d}` : ''}`, topNoSet: 'This set was not found in PokéWallet.',
+    topNone: 'No prices for cards in this set.', topHint: 'One or two requests fetch prices for every card in the set (most valuable cards and value sorting).',
     valueGroup: v => `Priced · total ${v}`, valueHint: 'Value from saved prices — fetch missing ones in ⚙︎ → Card prices → “Value my collection”.',
     clearFilters: 'Clear filters', done: 'Done', loading: 'Loading data…',
     loadError: 'Could not load data. Open the page through an HTTP server (not file://).',
@@ -194,6 +201,7 @@ const I18N = {
     cardAdded: 'Card added to collection', variantSaved: 'Card type saved', saveFail: 'Could not save data in this browser',
     viewSets: 'Sets', searchPhSets: 'Search set: name, code, series',
     setsStatus: (st, n, c) => `Started sets: ${st} of ${n} · ${nf(c)} ${enPlural(c, 'card', 'cards')}`,
+    setsValue: v => `value ${v}`, setValueShort: v => `value ${v}`,
     setsAll: 'All', setsStarted: 'Started', setsDone: 'Completed', setsNone: 'No sets.',
     secret: (h, n) => `+ secret ${h}/${n}`, complete: 'Complete!', setCards: 'Cards in set',
     showAll: 'All', showMissing: 'Missing', showOwned: 'Owned', back: 'Back',
@@ -239,7 +247,7 @@ const S = {
   store: { owned: {}, settings: {}, filters: {}, other: [], wish: [] },
   albumQ: '', albumHit: -1, setsQ: '', wishQ: '', cardsBySet: new Map(), ownedIdx: null,
 };
-const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', albumSort: 'pages', setSort: 'num', wishSort: 'new', priceSrc: 'cm', camId: '', camZoom: 1, pwTtl: 7 };
+const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', albumSort: 'pages', setSort: 'num', topN: 3, wishSort: 'new', priceSrc: 'cm', camId: '', camZoom: 1, pwTtl: 7 };
 
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -322,10 +330,15 @@ async function loadData() {
   }
 }
 const largeImg = url => url.includes('images.pokemontcg.io') ? url.replace(/\.png$/, '_hires.png') : url.replace(/\/small$/, '/large');
+// kolejność numerów w zestawie: najpierw same liczby (1, 2, … 10, … 201), potem z prefiksem (GG01…, SV1…, TG01…)
+// — porządek całkowity, bez „skakania” przy mieszaniu numerów z literami
+const numKey = s => {
+  const m = String(s).match(/^([A-Za-z]*)(\d+)(.*)$/);
+  return m ? [m[1].toUpperCase(), +m[2], m[3]] : [String(s).toUpperCase(), Infinity, ''];
+};
 const numSort = (a, b) => {
-  const pa = parseInt(a.num, 10), pb = parseInt(b.num, 10);
-  if (!isNaN(pa) && !isNaN(pb) && pa !== pb) return pa - pb;
-  return a.num.localeCompare(b.num, 'en', { numeric: true });
+  const A = numKey(a.num), B = numKey(b.num);
+  return A[0].localeCompare(B[0]) || A[1] - B[1] || A[2].localeCompare(B[2]);
 };
 
 // ===== Album =====

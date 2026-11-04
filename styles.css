@@ -573,3 +573,24 @@ button.scan-side { border: 0; background: transparent; color: #fff; padding: 0; 
   font-variant-numeric: tabular-nums;
 }
 .value-hint { margin: -4px 0 10px; }
+
+/* Top 3 w zestawie */
+.set-top { margin: 0 0 12px; }
+.set-top .crow { align-items: center; }
+.top-rank { flex: none; width: 26px; height: 26px; border-radius: 13px; background: #ffd23f; color: #222; font-weight: 800; display: grid; place-items: center; font-size: 13px; }
+.top-price { flex: none; font-weight: 800; color: #1d5a35; font-variant-numeric: tabular-nums; }
+
+/* Top N: nagłówek-przełącznik i zwinięty wiersz */
+.top-toggle {
+  display: flex; align-items: baseline; gap: 6px; width: 100%; border: 0; background: none; padding: 0 0 6px;
+  color: var(--text); text-align: left; flex-wrap: wrap;
+}
+.top-toggle .top-title { font-weight: 700; font-size: 16px; }
+.top-toggle small { color: var(--muted); font-size: 13px; margin-left: auto; }
+.top-toggle .chev { align-self: center; transition: transform .2s; flex: none; }
+.set-top.collapsed .top-toggle .chev { transform: rotate(-90deg); }
+.set-top.collapsed { padding-bottom: 10px; }
+.top-line { margin: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top-line .top-price { font-size: 13px; }
+.set-top.collapsed .top-toggle small { display: none; }
+.set-main .set-value { color: #1d5a35; font-weight: 700; }
