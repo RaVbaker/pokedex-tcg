@@ -302,6 +302,7 @@ function bindPrices() {
     $('#pwKey').type = 'password';
     $('#pwSrc').value = priceSource();
     $('#pwTopN').value = String(+setting('topN') || 3);
+    $('#pwPageLimit').value = String(+setting('pwPageLimit') || 100);
     $('#pwTtl').value = String(setting('pwTtl') ?? 7);
     $('#pwHint').innerHTML = t('pwHint');
     renderValueStatus();
@@ -322,6 +323,7 @@ function bindPrices() {
   $('#pwClear').addEventListener('click', () => { pwStoreKey(''); $('#pwKey').value = ''; $('#pwStatus').textContent = t('pwKeyRemoved'); });
   $('#pwSrc').addEventListener('change', e => { S.store.settings.priceSrc = e.target.value; saveStore(); renderValueStatus(); });
   $('#pwValue').addEventListener('click', valueCollection);
+  $('#pwPageLimit').addEventListener('change', e => { S.store.settings.pwPageLimit = +e.target.value; saveStore(); });
   $('#pwTopN').addEventListener('change', e => { S.store.settings.topN = +e.target.value; saveStore(); if (typeof renderSetView === 'function' && !$('#setView').hidden) renderSetView(); });
   $('#pwTtl').addEventListener('change', e => { S.store.settings.pwTtl = +e.target.value; saveStore(); renderValueStatus(); });
   $('#pwCacheClear').addEventListener('click', () => { PW.cache = {}; savePriceCache(); renderValueStatus(t('pwCacheCleared')); });
@@ -387,8 +389,18 @@ async function fetchSetPrices(set) {
     throw new PwError(404, t('topNoSet'));
   }
   const items = [];
-  for (let page = 1, pages = 1; page <= pages && page <= 5; page++) {
-    const body = await pwGet(`/sets/${encodeURIComponent(pwSet.id)}`, { limit: 200, page });
+  // limit kart na zapytanie zależy od planu PokéWallet (darmowy: 100) — ustawiany w ⚙︎;
+  // gdy API odrzuci większy limit, ponawiamy ze 100
+  let limit = +setting('pwPageLimit') || 100;
+  const getPage = async page => {
+    try { return await pwGet(`/sets/${encodeURIComponent(pwSet.id)}`, { limit, page }); }
+    catch (e) {
+      if (limit > 100 && [400, 403, 422].includes(e.status)) { limit = 100; return pwGet(`/sets/${encodeURIComponent(pwSet.id)}`, { limit, page }); }
+      throw e;
+    }
+  };
+  for (let page = 1, pages = 1; page <= pages && page <= 10; page++) {
+    const body = await getPage(page);
     if (body?.disambiguation) throw new PwError(300, t('topNoSet'));
     const list = Array.isArray(body?.cards) ? body.cards : Array.isArray(body?.data?.cards) ? body.data.cards
       : Array.isArray(body?.data) ? body.data : Array.isArray(body?.results) ? body.results : [];

@@ -46,9 +46,9 @@ const I18N = {
     notOwnedGroup: 'Jeszcze nie mam', noDate: 'Bez daty', albumPages: 'Strony albumu', albumAdded: 'Ostatnio dodane',
     wishNewest: 'Najnowsze', wishOldest: 'Najstarsze', wishByName: 'Nazwa', wishBySet: 'Zestaw',
     sortByValue: 'Wartość ↓', sortByNum: 'Numer', noPriceGroup: 'Bez zapisanej ceny',
-    topTitle: n => `Top ${n} najdroższych w zestawie`, topN: 'Najdroższe w zestawie: ile kart', topFetch: 'Pobierz ceny zestawu', topLoading: 'Pobieram ceny zestawu…',
+    topTitle: n => `Top ${n} najdroższych w zestawie`, topN: 'Najdroższe w zestawie: ile kart', pwPageLimit: 'Kart na jedno zapytanie (limit planu PokéWallet)', pwLimitFree: '100 — darmowy plan', topFetch: 'Pobierz ceny zestawu', topLoading: 'Pobieram ceny zestawu…',
     topFrom: (n, total, d) => `ceny ${n} z ${total} kart${d ? ` · ${d}` : ''}`, topNoSet: 'Nie znaleziono tego zestawu w PokéWallet.',
-    topNone: 'Brak cen dla kart z tego zestawu.', topHint: 'Jedno–dwa zapytania pobiorą ceny wszystkich kart z zestawu (najdroższe karty i sortowanie wg wartości).',
+    topNone: 'Brak cen dla kart z tego zestawu.', topHint: 'Kilka zapytań (wg limitu w ⚙︎) pobierze ceny wszystkich kart z zestawu (najdroższe karty i sortowanie wg wartości).',
     valueGroup: v => `Wycenione · razem ${v}`, valueHint: 'Wartość z zapisanych cen — brakujące pobierzesz w ⚙︎ → Ceny kart → „Wyceń kolekcję”.',
     clearFilters: 'Wyczyść filtry', done: 'Gotowe', loading: 'Ładowanie danych…',
     loadError: 'Nie udało się wczytać danych. Otwórz stronę przez serwer HTTP (nie file://).',
@@ -145,9 +145,9 @@ const I18N = {
     notOwnedGroup: 'Not owned yet', noDate: 'No date', albumPages: 'Binder pages', albumAdded: 'Recently added',
     wishNewest: 'Newest', wishOldest: 'Oldest', wishByName: 'Name', wishBySet: 'Set',
     sortByValue: 'Value ↓', sortByNum: 'Number', noPriceGroup: 'No saved price',
-    topTitle: n => `Top ${n} most valuable in set`, topN: 'Most valuable in set: how many', topFetch: 'Fetch set prices', topLoading: 'Fetching set prices…',
+    topTitle: n => `Top ${n} most valuable in set`, topN: 'Most valuable in set: how many', pwPageLimit: 'Cards per request (PokéWallet plan limit)', pwLimitFree: '100 — free plan', topFetch: 'Fetch set prices', topLoading: 'Fetching set prices…',
     topFrom: (n, total, d) => `prices for ${n} of ${total} cards${d ? ` · ${d}` : ''}`, topNoSet: 'This set was not found in PokéWallet.',
-    topNone: 'No prices for cards in this set.', topHint: 'One or two requests fetch prices for every card in the set (most valuable cards and value sorting).',
+    topNone: 'No prices for cards in this set.', topHint: 'A few requests (per the limit in ⚙︎) fetch prices for every card in the set (most valuable cards and value sorting).',
     valueGroup: v => `Priced · total ${v}`, valueHint: 'Value from saved prices — fetch missing ones in ⚙︎ → Card prices → “Value my collection”.',
     clearFilters: 'Clear filters', done: 'Done', loading: 'Loading data…',
     loadError: 'Could not load data. Open the page through an HTTP server (not file://).',
@@ -249,7 +249,7 @@ const S = {
   store: { owned: {}, settings: {}, filters: {}, other: [], wish: [] },
   albumQ: '', albumHit: -1, setsQ: '', wishQ: '', cardsBySet: new Map(), ownedIdx: null,
 };
-const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', albumSort: 'pages', setSort: 'num', topN: 3, wishSort: 'new', priceSrc: 'cm', camId: '', camZoom: 1, pwTtl: 7 };
+const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', albumSort: 'pages', setSort: 'num', topN: 3, pwPageLimit: 100, wishSort: 'new', priceSrc: 'cm', camId: '', camZoom: 1, pwTtl: 7 };
 
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
