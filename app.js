@@ -6,8 +6,8 @@
 
 // ===== Stałe =====
 // Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
-const APP_VERSION = '14';
-const APP_DATE = '2026-11-02';
+const APP_VERSION = '15';
+const APP_DATE = '2026-11-04';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
 const ART = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
@@ -134,7 +134,12 @@ const I18N = {
     pwQuota: (h, d) => `Pozostało zapytań: ${h}/h, ${d}/dzień.`,
     pwErr401: 'Nieprawidłowy klucz API.', pwErr403: 'Niedostępne w Twoim planie PokéWallet: ',
     pwErr429: 'Limit zapytań wyczerpany — spróbuj za jakiś czas.', pwNetwork: 'Brak połączenia z PokéWallet.',
-    pwTimeout: 'PokéWallet nie odpowiedział w 20 s — spróbuj ponownie.', pwRetryIn: m => `(za ok. ${m} min)`,
+    pwTimeout: 'PokéWallet nie odpowiedział w 20 s — spróbuj ponownie.',
+    quotaBlockedHour: tm => `Godzinowy limit zapytań wyczerpany — odnowi się najpóźniej ok. ${tm}.`,
+    quotaBlockedDay: tm => `Dzienny limit zapytań wyczerpany — odnowi się najpóźniej ok. ${tm}.`,
+    quotaLeft: (h, lh, d, ld, at) => `Pozostało zapytań: ${h}/${lh} w tej godzinie, ${d}/${ld} dziś (stan z ${at}).`,
+    quotaSent: (h, d) => `Z tej przeglądarki: ${h} ${plPlural(h, 'zapytanie', 'zapytania', 'zapytań')} w ostatniej godzinie, ${d} w ostatniej dobie.`,
+    quotaFreePlan: 'Plan darmowy: 100 zapytań na godzinę, 1000 na dobę.', pwRetryIn: m => `(za ok. ${m} min)`,
     pwNothingToValue: 'Wszystkie karty kolekcji mają świeże ceny (ważność w ustawieniu wyżej).',
     pwValuedN: n => `Wyceniono ${n} ${plPlural(n, 'kartę', 'karty', 'kart')}`,
     pwValuing: (i, n) => `Wyceniam… ${i}/${n}`,
@@ -243,7 +248,12 @@ const I18N = {
     pwQuota: (h, d) => `Requests left: ${h}/h, ${d}/day.`,
     pwErr401: 'Invalid API key.', pwErr403: 'Not available on your PokéWallet plan: ',
     pwErr429: 'Rate limit reached — try again later.', pwNetwork: 'Could not reach PokéWallet.',
-    pwTimeout: 'PokéWallet did not answer within 20 s — try again.', pwRetryIn: m => `(in about ${m} min)`,
+    pwTimeout: 'PokéWallet did not answer within 20 s — try again.',
+    quotaBlockedHour: tm => `Hourly request limit reached — resets at the latest around ${tm}.`,
+    quotaBlockedDay: tm => `Daily request limit reached — resets at the latest around ${tm}.`,
+    quotaLeft: (h, lh, d, ld, at) => `Requests left: ${h}/${lh} this hour, ${d}/${ld} today (as of ${at}).`,
+    quotaSent: (h, d) => `From this browser: ${h} ${enPlural(h, 'request', 'requests')} in the last hour, ${d} in the last 24 h.`,
+    quotaFreePlan: 'Free plan: 100 requests per hour, 1,000 per day.', pwRetryIn: m => `(in about ${m} min)`,
     pwNothingToValue: 'Every card in your collection has a fresh price (validity set above).',
     pwValuedN: n => `Priced ${n} ${enPlural(n, 'card', 'cards')}`,
     pwValuing: (i, n) => `Pricing… ${i}/${n}`,

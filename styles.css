@@ -594,3 +594,5 @@ button.scan-side { border: 0; background: transparent; color: #fff; padding: 0; 
 .top-line .top-price { font-size: 13px; }
 .set-top.collapsed .top-toggle small { display: none; }
 .set-main .set-value { color: #1d5a35; font-weight: 700; }
+.quota-info { color: var(--muted); margin: 6px 0 0; line-height: 1.5; }
+.quota-info .quota-blocked { color: var(--danger); }

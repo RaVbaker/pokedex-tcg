@@ -1,6 +1,6 @@
 /* Service worker: offline dla aplikacji i danych, cache obrazków stworków. */
 // Wersja aplikacji — podbijaj razem z APP_VERSION w app.js przy każdej zmianie plików
-const VERSION = 'v14';
+const VERSION = 'v15';
 const SHELL = `pokedex-shell-${VERSION}`;
 const IMG = 'pokedex-img-v1';
 const ASSETS = [

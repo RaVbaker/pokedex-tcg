@@ -49,10 +49,56 @@ function pwErrorText(status, msg) {
   if (status === 429) return t('pwErr429');
   return `PokéWallet ${status}: ${msg || ''}`;
 }
+// ===== Limit zapytań =====
+// Stan zapisywany w localStorage: ostatnio znane „pozostało” z nagłówków X-RateLimit-* (jeśli przeglądarka może je
+// odczytać), znaczniki czasu własnych zapytań (licznik tej przeglądarki) i blokada po 429.
+// Odpowiedź 429 nie ma Retry-After (wg SDK) — ma tylko limits.hourly/daily {limit, used, remaining}, więc czas
+// odnowienia szacujemy: okno godzinowe → najpóźniej za 60 min, dobowe → najpóźniej za 24 h.
+PW.quotaLS = 'pokedex-tcg:pwquota';
+function pwQuota() {
+  try { return JSON.parse(localStorage.getItem(PW.quotaLS) || '{}') || {}; } catch { return {}; }
+}
+function savePwQuota(q) { try { localStorage.setItem(PW.quotaLS, JSON.stringify(q)); } catch { /* pełny storage */ } }
+function noteRequest() {
+  const q = pwQuota(), now = Date.now();
+  q.sent = (q.sent || []).filter(ts => now - ts < 24 * 3600e3);
+  q.sent.push(now);
+  savePwQuota(q);
+}
+const pwBlockedUntil = () => { const q = pwQuota(); return q.blockedUntil && q.blockedUntil > Date.now() ? q.blockedUntil : 0; };
+function fmtClock(ts) {
+  const d = new Date(ts), today = new Date();
+  const time = d.toLocaleTimeString(LANG === 'pl' ? 'pl-PL' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+  return d.toDateString() === today.toDateString() ? time : `${d.toLocaleDateString(LANG === 'pl' ? 'pl-PL' : 'en-US', { day: 'numeric', month: 'short' })} ${time}`;
+}
+// opis limitu do ustawień (HTML)
+function quotaInfoHTML() {
+  if (!pwKey()) return '';
+  const q = pwQuota(), now = Date.now();
+  const lines = [];
+  const until = pwBlockedUntil();
+  if (until) lines.push(`<b class="quota-blocked">${t(q.blockedKind === 'day' ? 'quotaBlockedDay' : 'quotaBlockedHour', fmtClock(until))}</b>`);
+  if (q.hdr && now - q.hdr.at < 3600e3) {
+    lines.push(t('quotaLeft', q.hdr.hour ?? '?', q.hdr.limHour ?? '?', q.hdr.day ?? '?', q.hdr.limDay ?? '?', fmtClock(q.hdr.at)));
+  }
+  const sent = (q.sent || []).filter(ts => now - ts < 24 * 3600e3);
+  const hour = sent.filter(ts => now - ts < 3600e3).length;
+  lines.push(t('quotaSent', hour, sent.length));
+  if (pwPlan() === 'free') lines.push(t('quotaFreePlan'));
+  return lines.join('<br>');
+}
+function renderQuotaInfo() {
+  const el = $('#pwQuota');
+  if (el) el.innerHTML = quotaInfoHTML();
+}
+
 // zapytania idą po kolei (jedno na raz), żeby nie przekraczać limitu
 function pwGet(path, query = {}) {
   const key = pwKey();
   if (!key) return Promise.reject(new PwError(0, t('pwNoKey')));
+  // po wyczerpaniu limitu nie wysyłamy zapytań do szacowanego czasu odnowienia
+  const until = pwBlockedUntil();
+  if (until) return Promise.reject(new PwError(429, t(pwQuota().blockedKind === 'day' ? 'quotaBlockedDay' : 'quotaBlockedHour', fmtClock(until))));
   const url = new URL(PW.base + path);
   for (const [k, v] of Object.entries(query)) if (v != null && v !== '') url.searchParams.set(k, v);
   const run = async () => {
@@ -62,6 +108,7 @@ function pwGet(path, query = {}) {
     const timer = ctrl ? setTimeout(() => ctrl.abort(), PW.timeout) : null;
     try {
       // cache: 'no-store' — własną pamięć cen mamy w localStorage; bez tego „Odśwież” mógł dostać starą odpowiedź z cache przeglądarki
+      noteRequest();
       res = await fetch(url, { cache: 'no-store', signal: ctrl?.signal, headers: { 'X-API-Key': key, 'X-PokeWallet-Client': 'pokedex-tcg' } });
     } catch (e) {
       throw new PwError(-1, e?.name === 'AbortError' ? t('pwTimeout') : t('pwNetwork'));
@@ -70,15 +117,32 @@ function pwGet(path, query = {}) {
     }
     const h = res.headers;
     const remH = h.get('x-ratelimit-remaining-hour'), remD = h.get('x-ratelimit-remaining-day');
-    if (remH != null || remD != null) PW.quota = { hour: remH, day: remD };
+    if (remH != null || remD != null) {
+      PW.quota = { hour: remH, day: remD };
+      const q = pwQuota();
+      q.hdr = { at: Date.now(), hour: remH, day: remD, limHour: h.get('x-ratelimit-limit-hour'), limDay: h.get('x-ratelimit-limit-day') };
+      savePwQuota(q);
+    }
     let body = null;
     try { body = await res.json(); } catch { /* pusta odpowiedź */ }
     if (!res.ok) {
       const err = new PwError(res.status, pwErrorText(res.status, body?.error || body?.message || res.statusText));
-      const ra = parseInt(h.get('retry-after'), 10);
-      if (res.status === 429 && ra > 0) err.message += ' ' + t('pwRetryIn', Math.ceil(ra / 60));
+      if (res.status === 429) {
+        // które okno się skończyło: z treści odpowiedzi (limits.hourly/daily), Retry-After jeśli jednak jest
+        const lim = body?.limits || {};
+        const dayOut = lim.daily && +lim.daily.remaining <= 0;
+        const ra = parseInt(h.get('retry-after'), 10);
+        const q = pwQuota();
+        q.blockedKind = dayOut ? 'day' : 'hour';
+        q.blockedUntil = Date.now() + (ra > 0 ? ra * 1000 : dayOut ? 24 * 3600e3 : 3600e3);
+        if (lim.hourly || lim.daily) q.hdr = { at: Date.now(), hour: lim.hourly?.remaining, limHour: lim.hourly?.limit, day: lim.daily?.remaining, limDay: lim.daily?.limit };
+        savePwQuota(q);
+        err.message = t(dayOut ? 'quotaBlockedDay' : 'quotaBlockedHour', fmtClock(q.blockedUntil));
+      }
+      if (typeof renderQuotaInfo === 'function') renderQuotaInfo();
       throw err;
     }
+    if (pwQuota().blockedUntil) { const q = pwQuota(); delete q.blockedUntil; savePwQuota(q); } // limit odnowiony wcześniej
     return body;
   };
   const p = PW.queue.then(run, run);
@@ -309,6 +373,7 @@ async function valueCollection() {
     btn.disabled = false;
     btn.textContent = t('pwValueBtn');
     renderValueStatus(err);
+    renderQuotaInfo();
     if (typeof afterCardChange === 'function') afterCardChange();
     toast(err ? err : t('pwValuedN', done));
   }
@@ -327,6 +392,7 @@ function bindPrices() {
     $('#pwTtl').value = String(setting('pwTtl') ?? 7);
     $('#pwHint').innerHTML = t('pwHint');
     renderValueStatus();
+    renderQuotaInfo();
   });
   $('#pwShow').addEventListener('click', () => { const i = $('#pwKey'); i.type = i.type === 'password' ? 'text' : 'password'; });
   $('#pwSave').addEventListener('click', async () => {
@@ -337,6 +403,7 @@ function bindPrices() {
     try {
       await pwGet('/search', { q: 'pikachu', limit: 1 });
       $('#pwStatus').textContent = t('pwKeyOk') + quotaText();
+      renderQuotaInfo();
     } catch (e) {
       $('#pwStatus').textContent = e.message;
     }
