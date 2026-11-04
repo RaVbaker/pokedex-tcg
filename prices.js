@@ -49,10 +49,69 @@ function pwErrorText(status, msg) {
   if (status === 429) return t('pwErr429');
   return `PokéWallet ${status}: ${msg || ''}`;
 }
+// ===== Limit zapytań =====
+// Stan zapisywany w localStorage: ostatnio znane „pozostało” z nagłówków X-RateLimit-* (jeśli przeglądarka może je
+// odczytać), znaczniki czasu własnych zapytań (licznik tej przeglądarki) i blokada po 429.
+// Odpowiedź 429 nie ma Retry-After (wg SDK) — ma tylko limits.hourly/daily {limit, used, remaining}, więc czas
+// odnowienia szacujemy: okno godzinowe → najpóźniej za 60 min, dobowe → najpóźniej za 24 h.
+PW.quotaLS = 'pokedex-tcg:pwquota';
+function pwQuota() {
+  try { return JSON.parse(localStorage.getItem(PW.quotaLS) || '{}') || {}; } catch { return {}; }
+}
+function savePwQuota(q) { try { localStorage.setItem(PW.quotaLS, JSON.stringify(q)); } catch { /* pełny storage */ } }
+function noteRequest() {
+  const q = pwQuota(), now = Date.now();
+  q.sent = (q.sent || []).filter(ts => now - ts < 24 * 3600e3);
+  q.sent.push(now);
+  savePwQuota(q);
+}
+const pwBlockedUntil = () => { const q = pwQuota(); return q.blockedUntil && q.blockedUntil > Date.now() ? q.blockedUntil : 0; };
+function fmtClock(ts) {
+  const d = new Date(ts), today = new Date();
+  const time = d.toLocaleTimeString(LANG === 'pl' ? 'pl-PL' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+  return d.toDateString() === today.toDateString() ? time : `${d.toLocaleDateString(LANG === 'pl' ? 'pl-PL' : 'en-US', { day: 'numeric', month: 'short' })} ${time}`;
+}
+// pasek postępu zapytań (i z n)
+function setProgressBar(el, i, n) {
+  if (!el) return;
+  el.hidden = !n;
+  const bar = el.querySelector('span');
+  if (bar) bar.style.width = n ? `${Math.round(i / n * 100)}%` : '0';
+  el.setAttribute('aria-valuenow', String(i));
+  el.setAttribute('aria-valuemax', String(n));
+}
+// opis limitu do ustawień (HTML)
+function quotaInfoHTML() {
+  if (!pwKey()) return '';
+  const q = pwQuota(), now = Date.now();
+  const lines = [];
+  const until = pwBlockedUntil();
+  if (until) lines.push(`<b class="quota-blocked">${t(q.blockedKind === 'day' ? 'quotaBlockedDay' : 'quotaBlockedHour', fmtClock(until))}</b> ${t('quotaUpgradeHint')}`);
+  if (q.hdr && now - q.hdr.at < 3600e3) {
+    lines.push(t('quotaLeft', q.hdr.hour ?? '?', q.hdr.limHour ?? '?', q.hdr.day ?? '?', q.hdr.limDay ?? '?', fmtClock(q.hdr.at)));
+  }
+  const sent = (q.sent || []).filter(ts => now - ts < 24 * 3600e3);
+  const hour = sent.filter(ts => now - ts < 3600e3).length;
+  lines.push(t('quotaSent', hour, sent.length));
+  if (pwPlan() === 'free') lines.push(t('quotaFreePlan'));
+  return lines.join('<br>');
+}
+function renderQuotaInfo() {
+  const el = $('#pwQuota');
+  if (el) el.innerHTML = quotaInfoHTML();
+}
+
 // zapytania idą po kolei (jedno na raz), żeby nie przekraczać limitu
-function pwGet(path, query = {}) {
+function pwGet(path, query = {}, { ignoreBlock = false } = {}) {
   const key = pwKey();
   if (!key) return Promise.reject(new PwError(0, t('pwNoKey')));
+  // po wyczerpaniu limitu nie wysyłamy zapytań do szacowanego czasu odnowienia
+  // (wyjątek: „Zapisz i sprawdź” — np. po wykupieniu wyższego planu limit mógł już wzrosnąć)
+  // ręczne działanie użytkownika (Odśwież, Wyceń…) próbuje raz mimo blokady: sukces ją zdejmuje, kolejne 429 ją odnawia
+  const probe = PW.probeOnce && pwBlockedUntil();
+  PW.probeOnce = false;
+  const until = ignoreBlock || probe ? 0 : pwBlockedUntil();
+  if (until) return Promise.reject(new PwError(429, t(pwQuota().blockedKind === 'day' ? 'quotaBlockedDay' : 'quotaBlockedHour', fmtClock(until))));
   const url = new URL(PW.base + path);
   for (const [k, v] of Object.entries(query)) if (v != null && v !== '') url.searchParams.set(k, v);
   const run = async () => {
@@ -62,6 +121,7 @@ function pwGet(path, query = {}) {
     const timer = ctrl ? setTimeout(() => ctrl.abort(), PW.timeout) : null;
     try {
       // cache: 'no-store' — własną pamięć cen mamy w localStorage; bez tego „Odśwież” mógł dostać starą odpowiedź z cache przeglądarki
+      noteRequest();
       res = await fetch(url, { cache: 'no-store', signal: ctrl?.signal, headers: { 'X-API-Key': key, 'X-PokeWallet-Client': 'pokedex-tcg' } });
     } catch (e) {
       throw new PwError(-1, e?.name === 'AbortError' ? t('pwTimeout') : t('pwNetwork'));
@@ -70,15 +130,32 @@ function pwGet(path, query = {}) {
     }
     const h = res.headers;
     const remH = h.get('x-ratelimit-remaining-hour'), remD = h.get('x-ratelimit-remaining-day');
-    if (remH != null || remD != null) PW.quota = { hour: remH, day: remD };
+    if (remH != null || remD != null) {
+      PW.quota = { hour: remH, day: remD };
+      const q = pwQuota();
+      q.hdr = { at: Date.now(), hour: remH, day: remD, limHour: h.get('x-ratelimit-limit-hour'), limDay: h.get('x-ratelimit-limit-day') };
+      savePwQuota(q);
+    }
     let body = null;
     try { body = await res.json(); } catch { /* pusta odpowiedź */ }
     if (!res.ok) {
       const err = new PwError(res.status, pwErrorText(res.status, body?.error || body?.message || res.statusText));
-      const ra = parseInt(h.get('retry-after'), 10);
-      if (res.status === 429 && ra > 0) err.message += ' ' + t('pwRetryIn', Math.ceil(ra / 60));
+      if (res.status === 429) {
+        // które okno się skończyło: z treści odpowiedzi (limits.hourly/daily), Retry-After jeśli jednak jest
+        const lim = body?.limits || {};
+        const dayOut = lim.daily && +lim.daily.remaining <= 0;
+        const ra = parseInt(h.get('retry-after'), 10);
+        const q = pwQuota();
+        q.blockedKind = dayOut ? 'day' : 'hour';
+        q.blockedUntil = Date.now() + (ra > 0 ? ra * 1000 : dayOut ? 24 * 3600e3 : 3600e3);
+        if (lim.hourly || lim.daily) q.hdr = { at: Date.now(), hour: lim.hourly?.remaining, limHour: lim.hourly?.limit, day: lim.daily?.remaining, limDay: lim.daily?.limit };
+        savePwQuota(q);
+        err.message = t(dayOut ? 'quotaBlockedDay' : 'quotaBlockedHour', fmtClock(q.blockedUntil));
+      }
+      if (typeof renderQuotaInfo === 'function') renderQuotaInfo();
       throw err;
     }
+    if (pwQuota().blockedUntil) { const q = pwQuota(); delete q.blockedUntil; savePwQuota(q); } // limit odnowiony wcześniej
     return body;
   };
   const p = PW.queue.then(run, run);
@@ -201,9 +278,20 @@ function fmtMoney(v, cur) {
   catch { return `${v.toFixed(2)} ${cur}`; }
 }
 // mała etykieta z ceną (tylko z cache — bez zapytań)
+// cena starsza niż „Ceny aktualne przez” (⚙︎) — pokazywana jako nieświeża; w planie darmowym nie jest
+// odświeżana automatycznie, tylko po „Wyceń kolekcję”, „Wyceń kolejne / Pobierz ceny zestawu” albo „Odśwież”
+function isStale(cardId) {
+  const c = priceCache()[cardId];
+  return !!(c && Date.now() - c.at >= pwTtlMs());
+}
+function staleAttr(stale, at) {
+  return stale ? ` title="${esc(t('staleTitle', at ? fmtDate(at) : '?'))}"` : '';
+}
 function priceTag(cardId, variant) {
   const v = cardValue(cardId, variant);
-  return v ? `<span class="price-tag">${fmtMoney(v.value, v.cur)}</span>` : '';
+  if (!v) return '';
+  const st = isStale(cardId);
+  return `<span class="price-tag${st ? ' stale' : ''}"${staleAttr(st, priceCache()[cardId]?.at)}>${fmtMoney(v.value, v.cur)}</span>`;
 }
 // suma wartości egzemplarzy (tylko w wybranej walucie)
 function valueOfCopies(copies) {
@@ -224,7 +312,8 @@ const PW_ATTR = '<a class="pw-attr" href="https://pokewallet.io" target="_blank"
 function priceBoxHTML(card, c) {
   const e = c?.pw;
   const when = c?.at ? new Date(c.at).toLocaleString(LANG === 'pl' ? 'pl-PL' : 'en-US', { dateStyle: 'short', timeStyle: 'short' }) : '';
-  const head = `<div class="pw-head"><b>${t('pwPrices')}</b><span class="muted small">${when ? t('pwUpdated', when) : ''}</span>
+  const st = c?.at && Date.now() - c.at >= pwTtlMs();
+  const head = `<div class="pw-head"><b>${t('pwPrices')}</b><span class="muted small">${when ? t('pwUpdated', when) : ''}</span>${st ? `<span class="stale-note">${t('staleShort')}</span>` : ''}
     <button class="btn ghost small" data-price-refresh="${esc(card.id)}">${t('pwRefresh')}</button></div>`;
   if (!e) return `${head}<p class="muted small">${t('pwNotFound')}</p>${PW_ATTR}`;
   const m = (v, cur) => (v == null ? '—' : fmtMoney(v, cur));
@@ -245,9 +334,13 @@ async function renderPriceBox(card, force = false) {
   if (!box || box.dataset.card !== card.id) return;
   if (!pwKey()) { box.innerHTML = `<p class="muted small">${t('pwSetKeyHint')}</p>`; return; }
   const cached = priceCache()[card.id];
-  const fresh = cached && Date.now() - cached.at < pwTtlMs();
-  if (!force) box.innerHTML = cached ? priceBoxHTML(card, cached) : `<p class="muted small">${t('pwLoading')}</p>`;
-  if (fresh && !force) return;
+  // okno karty nigdy nie pobiera cen samo — tylko po kliknięciu „Pobierz cenę” / „Odśwież”
+  if (!force) {
+    box.innerHTML = cached ? priceBoxHTML(card, cached)
+      : `<div class="pw-head"><b>${t('pwPrices')}</b><span class="muted small">${t('pwNoPriceYet')}</span>
+          <button class="btn small" data-price-refresh="${esc(card.id)}">${t('pwFetchPrice')}</button></div>`;
+    return;
+  }
   try {
     const r = await getPrice(card, { force });
     const still = $('#priceBox');
@@ -278,7 +371,8 @@ function renderValueStatus(extra = '') {
   const cache = priceCache();
   const dates = [...new Set(copies.map(c => c.id))].map(id => cache[id]?.at).filter(Boolean);
   const range = dates.length ? ' ' + t('pwDates', fmtDate(Math.min(...dates)), fmtDate(Math.max(...dates))) : '';
-  $('#pwStatus').textContent = (copies.length ? t('pwValue', fmtMoney(sum, cur), priced, copies.length, stale) + range : '') + quotaText() + (extra ? ' ' + extra : '');
+  const staleN = [...new Set(copies.map(c => c.id))].filter(isStale).length;
+  $('#pwStatus').textContent = (copies.length ? t('pwValue', fmtMoney(sum, cur), priced, copies.length, stale) + range + (staleN ? ' ' + t('staleCount', staleN) : '') : '') + quotaText() + (extra ? ' ' + extra : '');
 }
 // karty do wyceny: najpierw bez żadnej ceny, potem z ceną starszą niż ustawiona ważność
 function pendingCards() {
@@ -293,6 +387,7 @@ async function valueCollection() {
   if (!pwKey()) { $('#pwStatus').textContent = t('pwNoKey'); return; }
   const todo = pendingCards().slice(0, PW.BATCH);
   if (!todo.length) { renderValueStatus(t('pwNothingToValue')); return; }
+  PW.probeOnce = true;
   PW.valuing = true;
   const btn = $('#pwValue');
   btn.disabled = true;
@@ -301,14 +396,17 @@ async function valueCollection() {
     for (let i = 0; i < todo.length; i++) {
       $('#pwStatus').textContent = t('pwValuing', i + 1, todo.length) + quotaText();
       btn.textContent = t('pwValuing', i + 1, todo.length);
+      setProgressBar($('#pwProgress'), i, todo.length);
       try { await getPrice(S.cardById.get(todo[i])); done++; }
       catch (e) { err = e.message; if ([429, 401, 403, -1, 0].includes(e.status)) break; }
     }
   } finally {
     PW.valuing = false;
+    setProgressBar($('#pwProgress'), 0, 0);
     btn.disabled = false;
     btn.textContent = t('pwValueBtn');
     renderValueStatus(err);
+    renderQuotaInfo();
     if (typeof afterCardChange === 'function') afterCardChange();
     toast(err ? err : t('pwValuedN', done));
   }
@@ -327,6 +425,7 @@ function bindPrices() {
     $('#pwTtl').value = String(setting('pwTtl') ?? 7);
     $('#pwHint').innerHTML = t('pwHint');
     renderValueStatus();
+    renderQuotaInfo();
   });
   $('#pwShow').addEventListener('click', () => { const i = $('#pwKey'); i.type = i.type === 'password' ? 'text' : 'password'; });
   $('#pwSave').addEventListener('click', async () => {
@@ -335,8 +434,9 @@ function bindPrices() {
     if (!k) { $('#pwStatus').textContent = ''; return; }
     $('#pwStatus').textContent = t('pwTesting');
     try {
-      await pwGet('/search', { q: 'pikachu', limit: 1 });
+      await pwGet('/search', { q: 'pikachu', limit: 1 }, { ignoreBlock: true }); // udane zapytanie zdejmuje blokadę
       $('#pwStatus').textContent = t('pwKeyOk') + quotaText();
+      renderQuotaInfo();
     } catch (e) {
       $('#pwStatus').textContent = e.message;
     }
@@ -358,6 +458,7 @@ function bindPrices() {
     if (!card || b.disabled) return;
     b.disabled = true;
     b.textContent = t('pwRefreshing');
+    PW.probeOnce = true;
     renderPriceBox(card, true).then(ok => { if (ok) toast(t('pricesUpdated', 1)); });
   });
 }
@@ -560,7 +661,7 @@ function setTopHTML(set) {
       <span class="top-rank">${i + 1}</span>
       <img class="thumb" loading="lazy" src="${esc(x.c.img)}" onerror="this.style.visibility='hidden'" alt="" data-card="${esc(x.c.id)}">
       <button class="info" data-card="${esc(x.c.id)}"><b>${esc(x.c.name)}</b><span><span class="num">${esc(x.c.num)}${set.total ? '/' + set.total : ''}</span> · ${esc(x.c.rarity || '—')}${x.row?.v ? ' · ' + esc(prettyVariant(x.row.v)) : ''}</span></button>
-      <span class="top-price">${fmtMoney(x.value, x.cur)}</span>
+      <span class="top-price${isStale(x.c.id) ? ' stale' : ''}"${staleAttr(isStale(x.c.id), priceCache()[x.c.id]?.at)}>${fmtMoney(x.value, x.cur)}</span>
     </li>`).join('');
   // zwijanie do jednego wiersza (wybór zapamiętany w ustawieniach)
   const collapsed = !!setting('topCollapsed');
@@ -571,7 +672,7 @@ function setTopHTML(set) {
     </button>`;
   if (collapsed) {
     const line = top.length
-      ? top.map((x, i) => `<b>${i + 1}.</b> ${esc(x.c.name)} <span class="top-price">${fmtMoney(x.value, x.cur)}</span>`).join(' · ')
+      ? top.map((x, i) => `<b>${i + 1}.</b> ${esc(x.c.name)} <span class="top-price${isStale(x.c.id) ? ' stale' : ''}">${fmtMoney(x.value, x.cur)}</span>`).join(' · ')
       : esc(meta?.none ? t('topNoSet') : meta?.at ? t('topNone') : t('topHint'));
     return `<section class="section set-top collapsed" id="setTop">${head}<p class="top-line">${line}</p></section>`;
   }
@@ -579,6 +680,7 @@ function setTopHTML(set) {
     ${head}
     ${top.length ? `<ul class="clist">${rows}</ul>` : `<p class="muted small">${meta?.none ? t('topNoSet') : meta?.at ? t('topNone') : t('topHint')}</p>`}
     ${meta?.mode === 'free' || (!meta?.mode && pwPlan() === 'free') ? `<p class="muted small">${t('topFreeNote')}</p>` : ''}
+    <div class="req-progress" id="setTopProgress" role="progressbar" aria-valuemin="0" hidden><span></span></div>
     <div class="btn-row">${btn}</div>
     <p class="pw-err small" id="setTopErr" hidden></p>${PW_ATTR}
   </section>`;
@@ -588,8 +690,10 @@ async function loadSetTop(setId, btn) {
   if (!set) return;
   btn.disabled = true;
   btn.textContent = t('topLoading');
+  PW.probeOnce = true;
   try {
-    const r = await fetchSetPrices(set, (i, n) => { btn.textContent = t('topPricing', i, n); });
+    const bar = $('#setTopProgress');
+    const r = await fetchSetPrices(set, (i, n) => { btn.textContent = t('topPricing', i, n); setProgressBar(bar, i - 1, n); });
     if (typeof renderSetView === 'function') renderSetView();
     toast(r.mode === 'pro' ? t('topDonePro', r.priced) : r.fetched ? t('topDoneFree', r.priced, r.fetched) : t('topAllFresh'));
   } catch (e) {

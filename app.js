@@ -6,8 +6,8 @@
 
 // ===== Stałe =====
 // Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
-const APP_VERSION = '14';
-const APP_DATE = '2026-11-02';
+const APP_VERSION = '15';
+const APP_DATE = '2026-11-04';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
 const ART = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
@@ -121,8 +121,10 @@ const I18N = {
     scanSearch: 'Szukaj', scanAgain: 'Skanuj ponownie', scanNone: 'Nie rozpoznano karty. Popraw nazwę lub numer i wyszukaj.',
     scanCandidates: n => `Pasujące karty (${n})`, scanResultTitle: 'Wynik skanu', scanCamera: 'Aparat', scanCamUsing: l => `Aparat: ${l}`, scanAllOf: n => `Wszystkie karty: ${n}`, scanError: 'Błąd OCR: ',
     pwSec: 'Ceny kart (PokéWallet)',
-    pwHint: 'Ceny z Cardmarket (EUR) i TCGplayer (USD) przez <a href="https://pokewallet.io" target="_blank" rel="noopener">PokéWallet API</a>. Załóż konto, skopiuj klucz API (<code>pk_live_…</code>) i wklej poniżej. Klucz zostaje tylko w tej przeglądarce i nie trafia do eksportu CSV. Darmowy plan ma limit ok. 100 zapytań na godzinę. Pobrane ceny są zapisywane w tej przeglądarce razem z datą i nie są pobierane ponownie, dopóki nie miną ustawionej ważności — „Wyceń kolekcję” dociąga tylko brakujące i przeterminowane.',
-    pwTtl: 'Zapisane ceny ważne przez', pwTtl1: '1 dzień', pwTtl7: '7 dni', pwTtl30: '30 dni', pwTtl0: 'Bez wygasania (tylko ręczne „Odśwież”)',
+    pwHint: 'Ceny z Cardmarket (EUR) i TCGplayer (USD) przez <a href="https://pokewallet.io" target="_blank" rel="noopener">PokéWallet API</a>. Załóż konto, skopiuj klucz API (<code>pk_live_…</code>) i wklej poniżej. Klucz zostaje tylko w tej przeglądarce i nie trafia do eksportu CSV. Darmowy plan ma limit ok. 100 zapytań na godzinę. Pobrane ceny są zapisywane w tej przeglądarce razem z datą. Starsze niż ustawiony czas są oznaczane jako nieświeże (≈); nigdy nie odświeżają się same — tylko po „Wyceń kolekcję”, „Wyceń kolejne”, „Pobierz cenę” albo „Odśwież”.',
+    pwTtl: 'Ceny uznawane za aktualne przez', pwTtl1: '1 dzień', pwTtl7: '7 dni', pwTtl30: '30 dni', pwTtl0: 'Zawsze aktualne',
+    staleShort: 'nieświeże', pwNoPriceYet: 'brak zapisanej ceny', pwFetchPrice: 'Pobierz cenę', staleTitle: d => `Cena nieświeża (z ${d}) — odśwież przez „Wyceń kolekcję”, „Wyceń kolejne” albo „Odśwież”`,
+    staleCount: n => `Nieświeże: ${n} — odświeżą się po „Wyceń kolekcję”.`,
     pwDates: (a, b) => (a === b ? `Ceny z: ${a}.` : `Ceny z: ${a} – ${b}.`),
     pwKey: 'Klucz API', pwSaveTest: 'Zapisz i sprawdź', pwRemove: 'Usuń klucz', pwSource: 'Główne źródło cen',
     pwValueBtn: 'Wyceń kolekcję', pwCacheClear: 'Wyczyść zapisane ceny', pwShowKey: 'Pokaż klucz',
@@ -134,7 +136,12 @@ const I18N = {
     pwQuota: (h, d) => `Pozostało zapytań: ${h}/h, ${d}/dzień.`,
     pwErr401: 'Nieprawidłowy klucz API.', pwErr403: 'Niedostępne w Twoim planie PokéWallet: ',
     pwErr429: 'Limit zapytań wyczerpany — spróbuj za jakiś czas.', pwNetwork: 'Brak połączenia z PokéWallet.',
-    pwTimeout: 'PokéWallet nie odpowiedział w 20 s — spróbuj ponownie.', pwRetryIn: m => `(za ok. ${m} min)`,
+    pwTimeout: 'PokéWallet nie odpowiedział w 20 s — spróbuj ponownie.',
+    quotaBlockedHour: tm => `Godzinowy limit zapytań wyczerpany — odnowi się najpóźniej ok. ${tm}.`,
+    quotaBlockedDay: tm => `Dzienny limit zapytań wyczerpany — odnowi się najpóźniej ok. ${tm}.`,
+    quotaLeft: (h, lh, d, ld, at) => `Pozostało zapytań: ${h}/${lh} w tej godzinie, ${d}/${ld} dziś (stan z ${at}).`,
+    quotaSent: (h, d) => `Z tej przeglądarki: ${h} ${plPlural(h, 'zapytanie', 'zapytania', 'zapytań')} w ostatniej godzinie, ${d} w ostatniej dobie.`,
+    quotaFreePlan: 'Plan darmowy: 100 zapytań na godzinę, 1000 na dobę.', quotaUpgradeHint: 'Do tego czasu ceny nie są pobierane automatycznie; „Odśwież”, „Wyceń…” i „Zapisz i sprawdź” próbują raz — jeśli się uda (np. po wykupieniu wyższego planu), blokada znika.', pwRetryIn: m => `(za ok. ${m} min)`,
     pwNothingToValue: 'Wszystkie karty kolekcji mają świeże ceny (ważność w ustawieniu wyżej).',
     pwValuedN: n => `Wyceniono ${n} ${plPlural(n, 'kartę', 'karty', 'kart')}`,
     pwValuing: (i, n) => `Wyceniam… ${i}/${n}`,
@@ -230,8 +237,10 @@ const I18N = {
     scanSearch: 'Search', scanAgain: 'Scan again', scanNone: 'No card recognized. Fix the name or number and search.',
     scanCandidates: n => `Matching cards (${n})`, scanResultTitle: 'Scan result', scanCamera: 'Camera', scanCamUsing: l => `Camera: ${l}`, scanAllOf: n => `All cards: ${n}`, scanError: 'OCR error: ',
     pwSec: 'Card prices (PokéWallet)',
-    pwHint: 'Cardmarket (EUR) and TCGplayer (USD) prices via the <a href="https://pokewallet.io" target="_blank" rel="noopener">PokéWallet API</a>. Create an account, copy your API key (<code>pk_live_…</code>) and paste it below. The key stays in this browser only and is not included in CSV export. The free plan allows about 100 requests per hour. Fetched prices are saved in this browser with their date and are not fetched again until they expire — “Value my collection” only fetches missing and expired ones.',
-    pwTtl: 'Saved prices valid for', pwTtl1: '1 day', pwTtl7: '7 days', pwTtl30: '30 days', pwTtl0: 'Never expire (manual “Refresh” only)',
+    pwHint: 'Cardmarket (EUR) and TCGplayer (USD) prices via the <a href="https://pokewallet.io" target="_blank" rel="noopener">PokéWallet API</a>. Create an account, copy your API key (<code>pk_live_…</code>) and paste it below. The key stays in this browser only and is not included in CSV export. The free plan allows about 100 requests per hour. Fetched prices are saved in this browser with their date. Older ones are marked stale (≈); they are never refreshed automatically — only by “Value my collection”, “Price next”, “Fetch price” or “Refresh”.',
+    pwTtl: 'Prices considered current for', pwTtl1: '1 day', pwTtl7: '7 days', pwTtl30: '30 days', pwTtl0: 'Always current',
+    staleShort: 'stale', pwNoPriceYet: 'no saved price', pwFetchPrice: 'Fetch price', staleTitle: d => `Stale price (from ${d}) — refresh with “Value my collection”, “Price next” or “Refresh”`,
+    staleCount: n => `Stale: ${n} — refreshed by “Value my collection”.`,
     pwDates: (a, b) => (a === b ? `Prices from: ${a}.` : `Prices from: ${a} – ${b}.`),
     pwKey: 'API key', pwSaveTest: 'Save & test', pwRemove: 'Remove key', pwSource: 'Main price source',
     pwValueBtn: 'Value my collection', pwCacheClear: 'Clear saved prices', pwShowKey: 'Show key',
@@ -243,7 +252,12 @@ const I18N = {
     pwQuota: (h, d) => `Requests left: ${h}/h, ${d}/day.`,
     pwErr401: 'Invalid API key.', pwErr403: 'Not available on your PokéWallet plan: ',
     pwErr429: 'Rate limit reached — try again later.', pwNetwork: 'Could not reach PokéWallet.',
-    pwTimeout: 'PokéWallet did not answer within 20 s — try again.', pwRetryIn: m => `(in about ${m} min)`,
+    pwTimeout: 'PokéWallet did not answer within 20 s — try again.',
+    quotaBlockedHour: tm => `Hourly request limit reached — resets at the latest around ${tm}.`,
+    quotaBlockedDay: tm => `Daily request limit reached — resets at the latest around ${tm}.`,
+    quotaLeft: (h, lh, d, ld, at) => `Requests left: ${h}/${lh} this hour, ${d}/${ld} today (as of ${at}).`,
+    quotaSent: (h, d) => `From this browser: ${h} ${enPlural(h, 'request', 'requests')} in the last hour, ${d} in the last 24 h.`,
+    quotaFreePlan: 'Free plan: 100 requests per hour, 1,000 per day.', quotaUpgradeHint: 'Until then prices are not fetched automatically; “Refresh”, “Value…” and “Save & test” try once — if it works (e.g. after upgrading your plan), the block is lifted.', pwRetryIn: m => `(in about ${m} min)`,
     pwNothingToValue: 'Every card in your collection has a fresh price (validity set above).',
     pwValuedN: n => `Priced ${n} ${enPlural(n, 'card', 'cards')}`,
     pwValuing: (i, n) => `Pricing… ${i}/${n}`,
@@ -536,7 +550,10 @@ function renderGrid() {
       const rest = rows.filter(r => !r.priced);
       const total = priced.reduce((s, r) => s + r.sum, 0);
       const cur = priced[0]?.cur;
-      const tile = r => tileHTML(r.pk, true, r.priced ? `<span class="tile-value">${fmtMoney(r.sum, r.cur)}</span>` : '');
+      const tile = r => {
+        const st = S.store.owned[r.pk.id].cards.some(o => isStale(o.id));
+        return tileHTML(r.pk, true, r.priced ? `<span class="tile-value${st ? ' stale' : ''}">${fmtMoney(r.sum, r.cur)}</span>` : '');
+      };
       grid.innerHTML = chips + `<p class="muted small value-hint">${t('valueHint')}</p>`
         + (priced.length ? `<section class="group"><div class="page-head"><b>${t('valueGroup', fmtMoney(total, cur))}</b><span>${priced.length}</span></div><div class="flat">${priced.map(tile).join('')}</div></section>` : '')
         + (rest.length ? `<section class="group"><div class="page-head"><b>${t('noPriceGroup')}</b><span>${rest.length}</span></div><div class="flat">${rest.map(tile).join('')}</div></section>` : '');

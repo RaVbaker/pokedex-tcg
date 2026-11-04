@@ -134,7 +134,12 @@ function renderSetView() {
   if (sortVal) {
     list = list.slice().sort((a, b) => rank(b) - rank(a) || numSort(a, b));
   }
-  const tagOf = c => { const v = shown.get(c.id); return v ? `<span class="price-tag">${fmtMoney(v.value, v.cur)}</span>` : ''; };
+  const tagOf = c => {
+    const v = shown.get(c.id);
+    if (!v) return '';
+    const st = isStale(c.id);
+    return `<span class="price-tag${st ? ' stale' : ''}"${staleAttr(st, priceCache()[c.id]?.at)}>${fmtMoney(v.value, v.cur)}</span>`;
+  };
   const sortChips = hasPrices
     ? `<div class="summary-chips">${[['num', t('sortByNum')], ['value', t('sortByValue')]].map(([val, l]) =>
       `<button data-set-sort="${val}" aria-pressed="${(sortVal ? 'value' : 'num') === val}">${l}</button>`).join('')}</div>` : '';
