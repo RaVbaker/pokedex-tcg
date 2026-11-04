@@ -86,7 +86,7 @@ function quotaInfoHTML() {
   const q = pwQuota(), now = Date.now();
   const lines = [];
   const until = pwBlockedUntil();
-  if (until) lines.push(`<b class="quota-blocked">${t(q.blockedKind === 'day' ? 'quotaBlockedDay' : 'quotaBlockedHour', fmtClock(until))}</b>`);
+  if (until) lines.push(`<b class="quota-blocked">${t(q.blockedKind === 'day' ? 'quotaBlockedDay' : 'quotaBlockedHour', fmtClock(until))}</b> ${t('quotaUpgradeHint')}`);
   if (q.hdr && now - q.hdr.at < 3600e3) {
     lines.push(t('quotaLeft', q.hdr.hour ?? '?', q.hdr.limHour ?? '?', q.hdr.day ?? '?', q.hdr.limDay ?? '?', fmtClock(q.hdr.at)));
   }
@@ -102,11 +102,12 @@ function renderQuotaInfo() {
 }
 
 // zapytania idą po kolei (jedno na raz), żeby nie przekraczać limitu
-function pwGet(path, query = {}) {
+function pwGet(path, query = {}, { ignoreBlock = false } = {}) {
   const key = pwKey();
   if (!key) return Promise.reject(new PwError(0, t('pwNoKey')));
   // po wyczerpaniu limitu nie wysyłamy zapytań do szacowanego czasu odnowienia
-  const until = pwBlockedUntil();
+  // (wyjątek: „Zapisz i sprawdź” — np. po wykupieniu wyższego planu limit mógł już wzrosnąć)
+  const until = ignoreBlock ? 0 : pwBlockedUntil();
   if (until) return Promise.reject(new PwError(429, t(pwQuota().blockedKind === 'day' ? 'quotaBlockedDay' : 'quotaBlockedHour', fmtClock(until))));
   const url = new URL(PW.base + path);
   for (const [k, v] of Object.entries(query)) if (v != null && v !== '') url.searchParams.set(k, v);
@@ -412,7 +413,7 @@ function bindPrices() {
     if (!k) { $('#pwStatus').textContent = ''; return; }
     $('#pwStatus').textContent = t('pwTesting');
     try {
-      await pwGet('/search', { q: 'pikachu', limit: 1 });
+      await pwGet('/search', { q: 'pikachu', limit: 1 }, { ignoreBlock: true }); // udane zapytanie zdejmuje blokadę
       $('#pwStatus').textContent = t('pwKeyOk') + quotaText();
       renderQuotaInfo();
     } catch (e) {
