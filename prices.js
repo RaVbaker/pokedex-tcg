@@ -334,10 +334,13 @@ async function renderPriceBox(card, force = false) {
   if (!box || box.dataset.card !== card.id) return;
   if (!pwKey()) { box.innerHTML = `<p class="muted small">${t('pwSetKeyHint')}</p>`; return; }
   const cached = priceCache()[card.id];
-  const fresh = cached && Date.now() - cached.at < pwTtlMs();
-  if (!force) box.innerHTML = cached ? priceBoxHTML(card, cached) : `<p class="muted small">${t('pwLoading')}</p>`;
-  // plan darmowy: nieświeża cena zostaje (oznaczona) — bez automatycznego zapytania; Pro odświeża sam
-  if (!force && cached && (fresh || pwPlan() !== 'pro')) return;
+  // okno karty nigdy nie pobiera cen samo — tylko po kliknięciu „Pobierz cenę” / „Odśwież”
+  if (!force) {
+    box.innerHTML = cached ? priceBoxHTML(card, cached)
+      : `<div class="pw-head"><b>${t('pwPrices')}</b><span class="muted small">${t('pwNoPriceYet')}</span>
+          <button class="btn small" data-price-refresh="${esc(card.id)}">${t('pwFetchPrice')}</button></div>`;
+    return;
+  }
   try {
     const r = await getPrice(card, { force });
     const still = $('#priceBox');
