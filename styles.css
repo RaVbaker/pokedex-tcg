@@ -613,3 +613,4 @@ button.scan-side { border: 0; background: transparent; color: #fff; padding: 0; 
 .copy-row .act { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--danger); }
 .wish-variant { border-color: #e0457b; }
 .wcap .wvar { color: #c0336a; }
+.donate-btn { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }

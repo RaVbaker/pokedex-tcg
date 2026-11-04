@@ -96,7 +96,9 @@ const I18N = {
     tiers: { 0: '—', 1: 'pospolita', 2: 'niepospolita', 3: 'rzadka', 4: 'bardzo rzadka', 5: 'ultra rzadka', 6: 'najrzadsza (sekretna)', promo: 'promo — nie z boosterów' },
     supLabel: { 'Pokémon': 'Pokémon', Trainer: 'Trener', Energy: 'Energia' },
     noDropRate: 'Szansa wypadnięcia z boostera (pull rate) nie jest dostępna w danych — zależy od zestawu.',
-    aboutAuthor: 'Autor: <a href="https://ravbaker.net" target="_blank" rel="noopener">Rafał Piekarski „RaVbaker”</a>',
+    donateText: 'Podoba Ci się aplikacja? Możesz postawić autorowi kawę.',
+    donateBtn: 'Wesprzyj przez Revolut',
+    aboutAuthor: 'Autor: <a href="https://ravbaker.net" target="_blank" rel="noopener">Rafał „RaVbaker” Piekarski</a>',
     aboutLegal: 'Pokémon, nazwy postaci, grafiki i karty Pokémon TCG są własnością i znakami towarowymi The Pokémon Company, Nintendo, Game Freak i Creatures Inc. To nieoficjalna, niekomercyjna strona fanowska, niezwiązana z tymi firmami ani przez nie wspierana.',
     aboutSec: 'O aplikacji', version: (v, d) => `Wersja ${v} (${d})`, swVersion: v => `Wersja offline (service worker): ${v}`,
     swNone: 'Tryb offline: nieaktywny', checkUpdate: 'Sprawdź aktualizacje', updChecking: 'Sprawdzam…',
@@ -213,7 +215,9 @@ const I18N = {
     tiers: { 0: '—', 1: 'common', 2: 'uncommon', 3: 'rare', 4: 'very rare', 5: 'ultra rare', 6: 'rarest (secret)', promo: 'promo — not from boosters' },
     supLabel: { 'Pokémon': 'Pokémon', Trainer: 'Trainer', Energy: 'Energy' },
     noDropRate: 'Booster pull rates are not available in the data — they depend on the set.',
-    aboutAuthor: 'Made by <a href="https://ravbaker.net" target="_blank" rel="noopener">Rafał Piekarski “RaVbaker”</a>',
+    donateText: 'Enjoying the app? You can buy the author a coffee.',
+    donateBtn: 'Support via Revolut',
+    aboutAuthor: 'Made by <a href="https://ravbaker.net" target="_blank" rel="noopener">Rafał “RaVbaker” Piekarski</a>',
     aboutLegal: 'Pokémon, character names, artwork and Pokémon TCG cards are property and trademarks of The Pokémon Company, Nintendo, Game Freak and Creatures Inc. This is an unofficial, non-commercial fan site, not affiliated with or endorsed by them.',
     aboutSec: 'About', version: (v, d) => `Version ${v} (${d})`, swVersion: v => `Offline version (service worker): ${v}`,
     swNone: 'Offline mode: not active', checkUpdate: 'Check for updates', updChecking: 'Checking…',
@@ -1216,6 +1220,8 @@ let swVersion = null;
 function renderVersion() {
   $('#appVersion').textContent = t('version', APP_VERSION, APP_DATE);
   $('#aboutAuthor').innerHTML = t('aboutAuthor');
+  $('#donateText').textContent = t('donateText');
+  $('#donateBtn').textContent = '☕ ' + t('donateBtn');
   $('#aboutLegal').textContent = t('aboutLegal');
   $('#setVersion').textContent = 'v' + APP_VERSION;
   $('#swVersion').textContent = swVersion ? t('swVersion', swVersion) : t('swNone');
