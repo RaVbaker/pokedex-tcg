@@ -448,8 +448,21 @@ function setTopHTML(set) {
       <button class="info" data-card="${esc(x.c.id)}"><b>${esc(x.c.name)}</b><span><span class="num">${esc(x.c.num)}${set.total ? '/' + set.total : ''}</span> · ${esc(x.c.rarity || '—')}${x.row?.v ? ' · ' + esc(prettyVariant(x.row.v)) : ''}</span></button>
       <span class="top-price">${fmtMoney(x.value, x.cur)}</span>
     </li>`).join('');
+  // zwijanie do jednego wiersza (wybór zapamiętany w ustawieniach)
+  const collapsed = !!setting('topCollapsed');
+  const chevron = `<svg class="chev" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="m7 10 5 5 5-5H7Z"/></svg>`;
+  const head = `<button class="top-toggle" data-top-toggle aria-expanded="${!collapsed}">
+      ${chevron}<span class="top-title">${t('topTitle', n)}</span>
+      <small>${priced ? t('topFrom', priced, total, meta?.at ? fmtDate(meta.at) : '') : ''}</small>
+    </button>`;
+  if (collapsed) {
+    const line = top.length
+      ? top.map((x, i) => `<b>${i + 1}.</b> ${esc(x.c.name)} <span class="top-price">${fmtMoney(x.value, x.cur)}</span>`).join(' · ')
+      : esc(meta?.none ? t('topNoSet') : meta?.at ? t('topNone') : t('topHint'));
+    return `<section class="section set-top collapsed" id="setTop">${head}<p class="top-line">${line}</p></section>`;
+  }
   return `<section class="section set-top" id="setTop">
-    <h3>${t('topTitle', n)} <small>${priced ? t('topFrom', priced, total, meta?.at ? fmtDate(meta.at) : '') : ''}</small></h3>
+    ${head}
     ${top.length ? `<ul class="clist">${rows}</ul>` : `<p class="muted small">${meta?.none ? t('topNoSet') : meta?.at ? t('topNone') : t('topHint')}</p>`}
     <div class="btn-row">${btn}</div>
     <p class="pw-err small" id="setTopErr" hidden></p>${PW_ATTR}

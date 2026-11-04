@@ -163,6 +163,9 @@ function bindSets() {
   $('#setInner').addEventListener('click', e => {
     const sh = e.target.closest('[data-show]');
     if (sh) { SETV.show = sh.dataset.show; renderSetView(); return; }
+    if (e.target.closest('[data-top-toggle]')) {
+      S.store.settings.topCollapsed = !setting('topCollapsed'); saveStore(); renderSetView(); return;
+    }
     const top = e.target.closest('[data-set-top]');
     if (top) { loadSetTop(top.dataset.setTop, top); return; }
     const ss = e.target.closest('[data-set-sort]');
