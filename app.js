@@ -6,7 +6,7 @@
 
 // ===== Stałe =====
 // Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
-const APP_VERSION = '12';
+const APP_VERSION = '13';
 const APP_DATE = '2026-11-02';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
@@ -46,7 +46,14 @@ const I18N = {
     notOwnedGroup: 'Jeszcze nie mam', noDate: 'Bez daty', albumPages: 'Strony albumu', albumAdded: 'Ostatnio dodane',
     wishNewest: 'Najnowsze', wishOldest: 'Najstarsze', wishByName: 'Nazwa', wishBySet: 'Zestaw',
     sortByValue: 'Wartość ↓', sortByNum: 'Numer', noPriceGroup: 'Bez zapisanej ceny',
-    topTitle: n => `Top ${n} najdroższych w zestawie`, topN: 'Najdroższe w zestawie: ile kart', pwPageLimit: 'Kart na jedno zapytanie (limit planu PokéWallet)', pwLimitFree: '100 — darmowy plan', topFetch: 'Pobierz ceny zestawu', topLoading: 'Pobieram ceny zestawu…',
+    topTitle: n => `Top ${n} najdroższych w zestawie`, topN: 'Najdroższe w zestawie: ile kart', pwPageLimit: 'Kart na jedno zapytanie (limit planu PokéWallet)', pwLimitFree: '100 — darmowy plan',
+    pwPlanLbl: 'Plan PokéWallet', pwPlanFree: 'Darmowy', pwPlanPro: 'Pro (albo 7-dniowy trial)',
+    pwSetBudget: 'Plan darmowy: ile najrzadszych kart wyceniać w zestawie',
+    topPricing: (i, n) => `Wyceniam ${i}/${n}…`, topDonePro: n => `Wyceniono cały zestaw: ${n} kart z cenami`,
+    topDoneFree: (p, f) => `Wyceniono ${f} najrzadszych kart (z cenami: ${p})`,
+    topProMissing: 'Brak planu Pro — wyceniam najrzadsze karty (plan darmowy).', topMore: n => `Wyceń kolejne (${n})`,
+    topAllFresh: 'Wszystkie karty tego zestawu z PokéWallet mają już świeże ceny.',
+    topFreeNote: 'Plan darmowy: lista zestawu w PokéWallet nie zawiera cen, więc wyceniane są najrzadsze karty (po 1 zapytaniu, liczba w ⚙︎). Plan Pro wycenia cały zestaw jednym zapytaniem.', topFetch: 'Pobierz ceny zestawu', topLoading: 'Pobieram ceny zestawu…',
     topFrom: (n, total, d) => `ceny ${n} z ${total} kart${d ? ` · ${d}` : ''}`, topNoSet: 'Nie znaleziono tego zestawu w PokéWallet.',
     topNone: 'Brak cen dla kart z tego zestawu.', topHint: 'Kilka zapytań (wg limitu w ⚙︎) pobierze ceny wszystkich kart z zestawu (najdroższe karty i sortowanie wg wartości).',
     valueGroup: v => `Wycenione · razem ${v}`, valueHint: 'Wartość z zapisanych cen — brakujące pobierzesz w ⚙︎ → Ceny kart → „Wyceń kolekcję”.',
@@ -145,7 +152,14 @@ const I18N = {
     notOwnedGroup: 'Not owned yet', noDate: 'No date', albumPages: 'Binder pages', albumAdded: 'Recently added',
     wishNewest: 'Newest', wishOldest: 'Oldest', wishByName: 'Name', wishBySet: 'Set',
     sortByValue: 'Value ↓', sortByNum: 'Number', noPriceGroup: 'No saved price',
-    topTitle: n => `Top ${n} most valuable in set`, topN: 'Most valuable in set: how many', pwPageLimit: 'Cards per request (PokéWallet plan limit)', pwLimitFree: '100 — free plan', topFetch: 'Fetch set prices', topLoading: 'Fetching set prices…',
+    topTitle: n => `Top ${n} most valuable in set`, topN: 'Most valuable in set: how many', pwPageLimit: 'Cards per request (PokéWallet plan limit)', pwLimitFree: '100 — free plan',
+    pwPlanLbl: 'PokéWallet plan', pwPlanFree: 'Free', pwPlanPro: 'Pro (or 7-day trial)',
+    pwSetBudget: 'Free plan: how many rarest cards to price per set',
+    topPricing: (i, n) => `Pricing ${i}/${n}…`, topDonePro: n => `Whole set priced: ${n} cards with prices`,
+    topDoneFree: (p, f) => `Priced the ${f} rarest cards (with prices: ${p})`,
+    topProMissing: 'No Pro plan — pricing the rarest cards (free plan).', topMore: n => `Price next (${n})`,
+    topAllFresh: 'Every card of this set from PokéWallet already has fresh prices.',
+    topFreeNote: 'Free plan: the PokéWallet set listing has no prices, so the rarest cards are priced (1 request each, number in ⚙︎). The Pro plan prices the whole set in one request.', topFetch: 'Fetch set prices', topLoading: 'Fetching set prices…',
     topFrom: (n, total, d) => `prices for ${n} of ${total} cards${d ? ` · ${d}` : ''}`, topNoSet: 'This set was not found in PokéWallet.',
     topNone: 'No prices for cards in this set.', topHint: 'A few requests (per the limit in ⚙︎) fetch prices for every card in the set (most valuable cards and value sorting).',
     valueGroup: v => `Priced · total ${v}`, valueHint: 'Value from saved prices — fetch missing ones in ⚙︎ → Card prices → “Value my collection”.',
@@ -249,7 +263,7 @@ const S = {
   store: { owned: {}, settings: {}, filters: {}, other: [], wish: [] },
   albumQ: '', albumHit: -1, setsQ: '', wishQ: '', cardsBySet: new Map(), ownedIdx: null,
 };
-const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', albumSort: 'pages', setSort: 'num', topN: 3, pwPageLimit: 100, wishSort: 'new', priceSrc: 'cm', camId: '', camZoom: 1, pwTtl: 7 };
+const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', albumSort: 'pages', setSort: 'num', topN: 3, pwPageLimit: 100, pwPlan: 'free', pwSetBudget: 12, wishSort: 'new', priceSrc: 'cm', camId: '', camZoom: 1, pwTtl: 7 };
 
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -713,7 +727,16 @@ const WOTC_1ST = new Set(['base1', 'base2', 'base3', 'base5', 'gym1', 'gym2', 'n
 const BALL_REVERSE = new Set(['sv3pt5', 'sv8pt5']); // 151, Prismatic Evolutions: reverse z Poké Ball / Master Ball
 function availableVariants(c) {
   const out = new Set();
-  const pw = typeof priceCache === 'function' ? priceCache()[c.id]?.pw : null;
+  // 0) warianty z listy zestawu PokéWallet (card_info.variants: „Normal”, „Reverse Holofoil”…) — najdokładniejsze
+  const known = typeof pwMap === 'function' ? pwMap()[c.id]?.variants : null;
+  for (const v0 of known || []) {
+    const v = String(v0).toLowerCase();
+    if (/1st|first/.test(v)) out.add('1st Edition');
+    else if (/reverse/.test(v)) out.add('Reverse Holo');
+    else if (/holo|foil/.test(v)) out.add('Holo');
+    else if (v) out.add('Normal');
+  }
+  const pw = !out.size && typeof priceCache === 'function' ? priceCache()[c.id]?.pw : null;
   if (pw) {
     for (const r of [...pw.tcg, ...pw.cm]) {
       const v = String(r.v || '').toLowerCase();
