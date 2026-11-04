@@ -593,3 +593,4 @@ button.scan-side { border: 0; background: transparent; color: #fff; padding: 0; 
 .top-line { margin: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .top-line .top-price { font-size: 13px; }
 .set-top.collapsed .top-toggle small { display: none; }
+.set-main .set-value { color: #1d5a35; font-weight: 700; }

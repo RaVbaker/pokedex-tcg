@@ -32,6 +32,17 @@ function renderSets(grid) {
   const rows = [];
   let started = 0;
   const bySeries = new Map();
+  // wartość uzbieranych kart w każdym zestawie (tylko z zapisanych cen, bez zapytań do API)
+  const copiesBySet = new Map();
+  for (const o of allOwnedCopies()) {
+    const c = S.cardById.get(o.id);
+    if (!c) continue;
+    if (!copiesBySet.has(c.set.id)) copiesBySet.set(c.set.id, []);
+    copiesBySet.get(c.set.id).push(o);
+  }
+  const valueOf = set => (copiesBySet.has(set.id) ? valueOfCopies(copiesBySet.get(set.id)) : null);
+  let totalSum = 0, totalCur = null;
+  for (const set of S.sets) { const v = valueOf(set); if (v?.priced) { totalSum += v.sum; totalCur = v.cur; } }
   for (const set of [...S.sets].reverse()) {
     const pr = setProgress(set);
     if (pr.allHave) started++;
@@ -41,7 +52,7 @@ function renderSets(grid) {
     if (!bySeries.has(set.series)) bySeries.set(set.series, []);
     bySeries.get(set.series).push({ set, pr });
   }
-  $('#status').textContent = t('setsStatus', started, S.sets.length, totalOwnedCards());
+  $('#status').textContent = t('setsStatus', started, S.sets.length, totalOwnedCards()) + (totalCur ? ' · ' + t('setsValue', fmtMoney(totalSum, totalCur)) : '');
 
   const chip = (val, label) => `<button data-sets-show="${val}" aria-pressed="${show === val}">${label}</button>`;
   rows.push(`<div class="summary-chips sets-show">${chip('', t('setsAll'))}${chip('started', t('setsStarted'))}${chip('done', t('setsDone'))}</div>`);
@@ -55,7 +66,7 @@ function renderSets(grid) {
         ${setSymbol(set)}
         <span class="set-main">
           <b>${esc(set.name)}</b>
-          <small>${esc(set.code || set.id)} · ${esc((set.date || '').slice(0, 4))}</small>
+          <small>${esc(set.code || set.id)} · ${esc((set.date || '').slice(0, 4))}${(() => { const v = valueOf(set); return v?.priced ? ` · <span class="set-value">${t('setValueShort', fmtMoney(v.sum, v.cur))}</span>` : ''; })()}</small>
           <span class="set-bar"><span style="width:${pct}%"></span></span>
         </span>
         <span class="set-count"><b>${pr.baseHave}/${pr.base}</b>${pr.secret ? `<span class="set-secret">${t('secret', pr.secretHave, pr.secret)}</span>` : ''}${done ? `<small class="ok">✓ ${t('complete')}</small>` : `<small>${pct}%</small>`}</span>
