@@ -57,7 +57,8 @@ function pwGet(path, query = {}) {
   const run = async () => {
     let res;
     try {
-      res = await fetch(url, { headers: { 'X-API-Key': key, 'X-PokeWallet-Client': 'pokedex-tcg' } });
+      // cache: 'no-store' — własną pamięć cen mamy w localStorage; bez tego „Odśwież” mógł dostać starą odpowiedź z cache przeglądarki
+      res = await fetch(url, { cache: 'no-store', headers: { 'X-API-Key': key, 'X-PokeWallet-Client': 'pokedex-tcg' } });
     } catch {
       throw new PwError(-1, t('pwNetwork'));
     }
@@ -82,7 +83,10 @@ const pwNum = v => {
 };
 function pwTrim(r) {
   if (!r || typeof r !== 'object') return null;
-  const info = r.card_info || {};
+  // odpowiedź może być opakowana (np. { data: {...} } albo { card: {...} })
+  if (!r.card_info && !r.tcgplayer && !r.cardmarket) r = r.data || r.card || r;
+  if (!r || typeof r !== 'object' || Array.isArray(r)) return null;
+  const info = r.card_info || { name: r.name, set_name: r.set_name, set_code: r.set_code, card_number: r.card_number };
   const tcg = r.tcgplayer || null, cm = r.cardmarket || null;
   return {
     id: String(r.id || ''),
@@ -136,6 +140,7 @@ async function getPrice(card, { force = false } = {}) {
   if (c?.pw?.id) {
     try { entry = pwTrim(await pwGet(`/cards/${encodeURIComponent(c.pw.id)}`)); }
     catch (e) { if (e.status !== 404) throw e; }
+    if (entry && !entry.tcg.length && !entry.cm.length) entry = null; // pusta odpowiedź — spróbuj wyszukiwania
   }
   if (!entry) {
     const queries = [`${card.name} ${setClean(card.set.name)}`, card.name];
@@ -229,7 +234,7 @@ async function renderPriceBox(card, force = false) {
   if (!pwKey()) { box.innerHTML = `<p class="muted small">${t('pwSetKeyHint')}</p>`; return; }
   const cached = priceCache()[card.id];
   const fresh = cached && Date.now() - cached.at < pwTtlMs();
-  box.innerHTML = cached ? priceBoxHTML(card, cached) : `<p class="muted small">${t('pwLoading')}</p>`;
+  if (!force) box.innerHTML = cached ? priceBoxHTML(card, cached) : `<p class="muted small">${t('pwLoading')}</p>`;
   if (fresh && !force) return;
   try {
     const r = await getPrice(card, { force });
@@ -238,9 +243,12 @@ async function renderPriceBox(card, force = false) {
       still.innerHTML = priceBoxHTML(card, r);
       if (typeof refreshVariantSelect === 'function') refreshVariantSelect(card);
     }
+    return true;
   } catch (e) {
     const still = $('#priceBox');
     if (still && still.dataset.card === card.id) still.innerHTML = (cached ? priceBoxHTML(card, cached) : '') + `<p class="pw-err small">${esc(e.message)}</p>`;
+    if (force) toast(e.message);
+    return false;
   }
 }
 
@@ -322,7 +330,10 @@ function bindPrices() {
     const b = e.target.closest('[data-price-refresh]');
     if (!b) return;
     const card = S.cardById.get(b.dataset.priceRefresh);
-    if (card) renderPriceBox(card, true);
+    if (!card || b.disabled) return;
+    b.disabled = true;
+    b.textContent = t('pwRefreshing');
+    renderPriceBox(card, true).then(ok => { if (ok) toast(t('pricesUpdated', 1)); });
   });
 }
 
@@ -379,7 +390,9 @@ async function fetchSetPrices(set) {
   for (let page = 1, pages = 1; page <= pages && page <= 5; page++) {
     const body = await pwGet(`/sets/${encodeURIComponent(pwSet.id)}`, { limit: 200, page });
     if (body?.disambiguation) throw new PwError(300, t('topNoSet'));
-    items.push(...(Array.isArray(body?.cards) ? body.cards : []));
+    const list = Array.isArray(body?.cards) ? body.cards : Array.isArray(body?.data?.cards) ? body.data.cards
+      : Array.isArray(body?.data) ? body.data : Array.isArray(body?.results) ? body.results : [];
+    items.push(...list);
     const pg = body?.pagination || {};
     pages = +pg.total_pages || (pg.total && pg.limit ? Math.ceil(pg.total / pg.limit) : 1);
   }
@@ -403,6 +416,7 @@ async function fetchSetPrices(set) {
     const prev = merged.get(c.id);
     if (prev) { prev.tcg.push(...e.tcg); prev.cm.push(...e.cm); } else merged.set(c.id, { ...e, setName: e.setName || pwSet.name });
   }
+  if (!merged.size) throw new PwError(422, t('topNone')); // nic nie dopasowano — zostaw dotychczasowe ceny
   for (const [id, e] of merged) cache[id] = { at: now, pw: e };
   savePriceCache();
   meta[set.id] = { at: now, pwId: pwSet.id, pwName: pwSet.name, matched: merged.size };
@@ -474,9 +488,11 @@ async function loadSetTop(setId, btn) {
   btn.disabled = true;
   btn.textContent = t('topLoading');
   try {
-    await fetchSetPrices(set);
+    const n = await fetchSetPrices(set);
     if (typeof renderSetView === 'function') renderSetView();
+    toast(t('pricesUpdated', n));
   } catch (e) {
+    toast(e.message);
     if (typeof renderSetView === 'function') renderSetView();
     const err = $('#setTopErr');
     if (err && e.status !== 404) { err.textContent = e.message; err.hidden = false; } // 404 = komunikat już w sekcji

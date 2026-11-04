@@ -6,7 +6,7 @@
 
 // ===== Stałe =====
 // Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
-const APP_VERSION = '11';
+const APP_VERSION = '12';
 const APP_DATE = '2026-11-02';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
@@ -121,7 +121,8 @@ const I18N = {
     pwValueBtn: 'Wyceń kolekcję', pwCacheClear: 'Wyczyść zapisane ceny', pwShowKey: 'Pokaż klucz',
     pwNoKey: 'Brak klucza API PokéWallet (⚙︎ → Ceny kart).', pwSetKeyHint: 'Ceny: dodaj klucz API PokéWallet w ⚙︎ → Ceny kart.',
     pwLoading: 'Pobieram ceny…', pwNotFound: 'Nie znaleziono tej karty w PokéWallet.', pwNoPrices: 'Brak cen dla tej karty.',
-    pwPrices: 'Ceny', pwUpdated: d => `aktualizacja: ${d}`, pwRefresh: 'Odśwież',
+    pwPrices: 'Ceny', pwUpdated: d => `aktualizacja: ${d}`, pwRefresh: 'Odśwież', pwRefreshing: 'Odświeżam…',
+    pricesUpdated: n => `Zaktualizowano ceny (${n} ${plPlural(n, 'karta', 'karty', 'kart')})`,
     pwTesting: 'Sprawdzam klucz…', pwKeyOk: 'Klucz działa ✓', pwKeyRemoved: 'Usunięto klucz.',
     pwQuota: (h, d) => `Pozostało zapytań: ${h}/h, ${d}/dzień.`,
     pwErr401: 'Nieprawidłowy klucz API.', pwErr403: 'Niedostępne w Twoim planie PokéWallet: ',
@@ -219,7 +220,8 @@ const I18N = {
     pwValueBtn: 'Value my collection', pwCacheClear: 'Clear saved prices', pwShowKey: 'Show key',
     pwNoKey: 'No PokéWallet API key (⚙︎ → Card prices).', pwSetKeyHint: 'Prices: add a PokéWallet API key in ⚙︎ → Card prices.',
     pwLoading: 'Loading prices…', pwNotFound: 'This card was not found in PokéWallet.', pwNoPrices: 'No prices for this card.',
-    pwPrices: 'Prices', pwUpdated: d => `updated: ${d}`, pwRefresh: 'Refresh',
+    pwPrices: 'Prices', pwUpdated: d => `updated: ${d}`, pwRefresh: 'Refresh', pwRefreshing: 'Refreshing…',
+    pricesUpdated: n => `Prices updated (${n} ${enPlural(n, 'card', 'cards')})`,
     pwTesting: 'Testing key…', pwKeyOk: 'Key works ✓', pwKeyRemoved: 'Key removed.',
     pwQuota: (h, d) => `Requests left: ${h}/h, ${d}/day.`,
     pwErr401: 'Invalid API key.', pwErr403: 'Not available on your PokéWallet plan: ',
