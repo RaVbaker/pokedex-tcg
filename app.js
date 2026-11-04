@@ -6,7 +6,7 @@
 
 // ===== Stałe =====
 // Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
-const APP_VERSION = '9';
+const APP_VERSION = '10';
 const APP_DATE = '2026-11-02';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
@@ -45,6 +45,8 @@ const I18N = {
     sortDex: 'Nr Pokédex', sortName: 'Nazwa A–Z', sortType: 'Typ', sortSet: 'Kolejność w zestawie', sortAdded: 'Data dodania',
     notOwnedGroup: 'Jeszcze nie mam', noDate: 'Bez daty', albumPages: 'Strony albumu', albumAdded: 'Ostatnio dodane',
     wishNewest: 'Najnowsze', wishOldest: 'Najstarsze', wishByName: 'Nazwa', wishBySet: 'Zestaw',
+    sortByValue: 'Wartość ↓', sortByNum: 'Numer', noPriceGroup: 'Bez zapisanej ceny',
+    valueGroup: v => `Wycenione · razem ${v}`, valueHint: 'Wartość z zapisanych cen — brakujące pobierzesz w ⚙︎ → Ceny kart → „Wyceń kolekcję”.',
     clearFilters: 'Wyczyść filtry', done: 'Gotowe', loading: 'Ładowanie danych…',
     loadError: 'Nie udało się wczytać danych. Otwórz stronę przez serwer HTTP (nie file://).',
     progress: (o, t, c) => `Mam ${o} / ${t} · ${nf(c)} ${plPlural(c, 'karta', 'karty', 'kart')}`,
@@ -137,6 +139,8 @@ const I18N = {
     sortDex: 'Pokédex no.', sortName: 'Name A–Z', sortType: 'Type', sortSet: 'Set order', sortAdded: 'Date added',
     notOwnedGroup: 'Not owned yet', noDate: 'No date', albumPages: 'Binder pages', albumAdded: 'Recently added',
     wishNewest: 'Newest', wishOldest: 'Oldest', wishByName: 'Name', wishBySet: 'Set',
+    sortByValue: 'Value ↓', sortByNum: 'Number', noPriceGroup: 'No saved price',
+    valueGroup: v => `Priced · total ${v}`, valueHint: 'Value from saved prices — fetch missing ones in ⚙︎ → Card prices → “Value my collection”.',
     clearFilters: 'Clear filters', done: 'Done', loading: 'Loading data…',
     loadError: 'Could not load data. Open the page through an HTTP server (not file://).',
     progress: (o, t, c) => `Have ${o} / ${t} · ${nf(c)} ${enPlural(c, 'card', 'cards')}`,
@@ -235,7 +239,7 @@ const S = {
   store: { owned: {}, settings: {}, filters: {}, other: [], wish: [] },
   albumQ: '', albumHit: -1, setsQ: '', wishQ: '', cardsBySet: new Map(), ownedIdx: null,
 };
-const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', albumSort: 'pages', wishSort: 'new', priceSrc: 'cm', camId: '', camZoom: 1, pwTtl: 7 };
+const defaults = { pocket: 9, offset: 1, pages: true, hd: false, view: 'dex', cardImg: true, lang: '', setsShow: '', albumSort: 'pages', setSort: 'num', wishSort: 'new', priceSrc: 'cm', camId: '', camZoom: 1, pwTtl: 7 };
 
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -410,7 +414,7 @@ function checkBtn(pk, owned) {
 function countBadge(n) {
   return n > 1 ? `<span class="cnt" aria-label="${esc(t('cardsOwnedAria', n))}">${n}</span>` : '';
 }
-function tileHTML(pk, album = false) {
+function tileHTML(pk, album = false, badge = '') {
   const owned = S.store.owned[pk.id];
   const mine = ownedCards(pk.id);
   const cls = `tile${owned ? ' owned' : ''}${album && !owned ? ' missing' : ''}`;
@@ -429,7 +433,7 @@ function tileHTML(pk, album = false) {
   const foot = sc && sc.length
     ? `<b>${esc(sc.slice(0, 2).map(c => c.num).join(', '))}${sc.length > 2 ? '…' : ''}</b><span>${esc(sc[0].set.code || '')}</span>`
     : `<span>${t('tileCards', cards.length)}</span><span>${t('tilePos', page, slot)}</span>`;
-  return `<article class="${cls}${card ? ' cardimg' : ''}" data-id="${pk.id}" style="${typeVars(pk.types)}" tabindex="0" ${aria}>${overlay}
+  return `<article class="${cls}${card ? ' cardimg' : ''}" data-id="${pk.id}" style="${typeVars(pk.types)}" tabindex="0" ${aria}>${overlay}${badge}
     <div class="tile-in">
       <div class="tile-top"><span class="tile-no">${pad(pk.id)}</span>${countBadge(mine.length)}${checkBtn(pk, owned)}</div>
       <div class="tile-img"><img loading="lazy" decoding="async" crossorigin="anonymous" alt="" src="${hd ? ART(pk.id) : SPRITE(pk.id)}"${hd ? ' class="hd"' : ''} onerror="this.onerror=null;this.className='hd';this.src='${hd ? SPRITE(pk.id) : ART(pk.id)}'"></div>
@@ -483,9 +487,26 @@ function renderGrid() {
     // Mój album: wszystkie strony, brakujące lekko wyszarzone — albo „Ostatnio dodane” wg daty
     S.filtered = S.pokemon;
     $('#status').textContent = t('statusAlbum', Object.keys(S.store.owned).length, total, totalOwnedCards());
-    const aSort = setting('albumSort');
-    const chips = `<div class="summary-chips sets-show">${[['pages', t('albumPages')], ['added', t('albumAdded')]]
+    // sortowanie wg wartości tylko z kluczem API PokéWallet (bez klucza nie ma cen)
+    const hasPrices = typeof pwKey === 'function' && !!pwKey();
+    let aSort = setting('albumSort');
+    if (aSort === 'value' && !hasPrices) aSort = 'pages';
+    const opts = [['pages', t('albumPages')], ['added', t('albumAdded')], ...(hasPrices ? [['value', t('sortByValue')]] : [])];
+    const chips = `<div class="summary-chips sets-show">${opts
       .map(([v, l]) => `<button data-album-sort="${v}" aria-pressed="${aSort === v}">${l}</button>`).join('')}</div>`;
+    if (aSort === 'value') {
+      // wartość stworka = suma zapisanych cen jego kart w kolekcji (wybrane źródło cen, z wariantem)
+      const rows = S.pokemon.filter(pk => S.store.owned[pk.id]).map(pk => ({ pk, ...valueOfCopies(S.store.owned[pk.id].cards) }));
+      const priced = rows.filter(r => r.priced).sort((a, b) => b.sum - a.sum || a.pk.id - b.pk.id);
+      const rest = rows.filter(r => !r.priced);
+      const total = priced.reduce((s, r) => s + r.sum, 0);
+      const cur = priced[0]?.cur;
+      const tile = r => tileHTML(r.pk, true, r.priced ? `<span class="tile-value">${fmtMoney(r.sum, r.cur)}</span>` : '');
+      grid.innerHTML = chips + `<p class="muted small value-hint">${t('valueHint')}</p>`
+        + (priced.length ? `<section class="group"><div class="page-head"><b>${t('valueGroup', fmtMoney(total, cur))}</b><span>${priced.length}</span></div><div class="flat">${priced.map(tile).join('')}</div></section>` : '')
+        + (rest.length ? `<section class="group"><div class="page-head"><b>${t('noPriceGroup')}</b><span>${rest.length}</span></div><div class="flat">${rest.map(tile).join('')}</div></section>` : '');
+      return;
+    }
     if (aSort === 'added') {
       const owned = S.pokemon.filter(pk => S.store.owned[pk.id]).sort((a, b) => S.store.owned[b.id].t - S.store.owned[a.id].t || a.id - b.id);
       grid.innerHTML = chips + (owned.length ? dayGroupsHTML(owned, pk => S.store.owned[pk.id].t, pk => tileHTML(pk, true)) : `<p class="empty">${t('noMatch')}</p>`);
