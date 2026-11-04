@@ -107,7 +107,10 @@ function pwGet(path, query = {}, { ignoreBlock = false } = {}) {
   if (!key) return Promise.reject(new PwError(0, t('pwNoKey')));
   // po wyczerpaniu limitu nie wysyłamy zapytań do szacowanego czasu odnowienia
   // (wyjątek: „Zapisz i sprawdź” — np. po wykupieniu wyższego planu limit mógł już wzrosnąć)
-  const until = ignoreBlock ? 0 : pwBlockedUntil();
+  // ręczne działanie użytkownika (Odśwież, Wyceń…) próbuje raz mimo blokady: sukces ją zdejmuje, kolejne 429 ją odnawia
+  const probe = PW.probeOnce && pwBlockedUntil();
+  PW.probeOnce = false;
+  const until = ignoreBlock || probe ? 0 : pwBlockedUntil();
   if (until) return Promise.reject(new PwError(429, t(pwQuota().blockedKind === 'day' ? 'quotaBlockedDay' : 'quotaBlockedHour', fmtClock(until))));
   const url = new URL(PW.base + path);
   for (const [k, v] of Object.entries(query)) if (v != null && v !== '') url.searchParams.set(k, v);
@@ -367,6 +370,7 @@ async function valueCollection() {
   if (!pwKey()) { $('#pwStatus').textContent = t('pwNoKey'); return; }
   const todo = pendingCards().slice(0, PW.BATCH);
   if (!todo.length) { renderValueStatus(t('pwNothingToValue')); return; }
+  PW.probeOnce = true;
   PW.valuing = true;
   const btn = $('#pwValue');
   btn.disabled = true;
@@ -437,6 +441,7 @@ function bindPrices() {
     if (!card || b.disabled) return;
     b.disabled = true;
     b.textContent = t('pwRefreshing');
+    PW.probeOnce = true;
     renderPriceBox(card, true).then(ok => { if (ok) toast(t('pricesUpdated', 1)); });
   });
 }
@@ -668,6 +673,7 @@ async function loadSetTop(setId, btn) {
   if (!set) return;
   btn.disabled = true;
   btn.textContent = t('topLoading');
+  PW.probeOnce = true;
   try {
     const bar = $('#setTopProgress');
     const r = await fetchSetPrices(set, (i, n) => { btn.textContent = t('topPricing', i, n); setProgressBar(bar, i - 1, n); });
