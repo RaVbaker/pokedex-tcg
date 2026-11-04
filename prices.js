@@ -11,6 +11,7 @@ const PW = {
   keyLS: 'pokedex-tcg:pwkey',
   cacheLS: 'pokedex-tcg:prices',
   BATCH: 30,
+  timeout: 20000,
   cache: null,
   queue: Promise.resolve(),
   quota: null,
@@ -56,18 +57,28 @@ function pwGet(path, query = {}) {
   for (const [k, v] of Object.entries(query)) if (v != null && v !== '') url.searchParams.set(k, v);
   const run = async () => {
     let res;
+    // limit czasu: zawieszone zapytanie blokowałoby całą kolejkę (i np. „Wyceń kolekcję” przestawał reagować)
+    const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), PW.timeout) : null;
     try {
       // cache: 'no-store' — własną pamięć cen mamy w localStorage; bez tego „Odśwież” mógł dostać starą odpowiedź z cache przeglądarki
-      res = await fetch(url, { cache: 'no-store', headers: { 'X-API-Key': key, 'X-PokeWallet-Client': 'pokedex-tcg' } });
-    } catch {
-      throw new PwError(-1, t('pwNetwork'));
+      res = await fetch(url, { cache: 'no-store', signal: ctrl?.signal, headers: { 'X-API-Key': key, 'X-PokeWallet-Client': 'pokedex-tcg' } });
+    } catch (e) {
+      throw new PwError(-1, e?.name === 'AbortError' ? t('pwTimeout') : t('pwNetwork'));
+    } finally {
+      if (timer) clearTimeout(timer);
     }
     const h = res.headers;
     const remH = h.get('x-ratelimit-remaining-hour'), remD = h.get('x-ratelimit-remaining-day');
     if (remH != null || remD != null) PW.quota = { hour: remH, day: remD };
     let body = null;
     try { body = await res.json(); } catch { /* pusta odpowiedź */ }
-    if (!res.ok) throw new PwError(res.status, pwErrorText(res.status, body?.error || body?.message || res.statusText));
+    if (!res.ok) {
+      const err = new PwError(res.status, pwErrorText(res.status, body?.error || body?.message || res.statusText));
+      const ra = parseInt(h.get('retry-after'), 10);
+      if (res.status === 429 && ra > 0) err.message += ' ' + t('pwRetryIn', Math.ceil(ra / 60));
+      throw err;
+    }
     return body;
   };
   const p = PW.queue.then(run, run);
@@ -280,19 +291,26 @@ function pendingCards() {
 async function valueCollection() {
   if (PW.valuing) return;
   if (!pwKey()) { $('#pwStatus').textContent = t('pwNoKey'); return; }
-  PW.valuing = true;
   const todo = pendingCards().slice(0, PW.BATCH);
-  let err = '';
+  if (!todo.length) { renderValueStatus(t('pwNothingToValue')); return; }
+  PW.valuing = true;
+  const btn = $('#pwValue');
+  btn.disabled = true;
+  let err = '', done = 0;
   try {
     for (let i = 0; i < todo.length; i++) {
       $('#pwStatus').textContent = t('pwValuing', i + 1, todo.length) + quotaText();
-      try { await getPrice(S.cardById.get(todo[i])); }
-      catch (e) { err = e.message; if (e.status === 429 || e.status === 401 || e.status === -1 || e.status === 0) break; }
+      btn.textContent = t('pwValuing', i + 1, todo.length);
+      try { await getPrice(S.cardById.get(todo[i])); done++; }
+      catch (e) { err = e.message; if ([429, 401, 403, -1, 0].includes(e.status)) break; }
     }
   } finally {
     PW.valuing = false;
+    btn.disabled = false;
+    btn.textContent = t('pwValueBtn');
     renderValueStatus(err);
     if (typeof afterCardChange === 'function') afterCardChange();
+    toast(err ? err : t('pwValuedN', done));
   }
 }
 

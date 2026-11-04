@@ -6,7 +6,7 @@
 
 // ===== Stałe =====
 // Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
-const APP_VERSION = '13';
+const APP_VERSION = '14';
 const APP_DATE = '2026-11-02';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
@@ -134,6 +134,9 @@ const I18N = {
     pwQuota: (h, d) => `Pozostało zapytań: ${h}/h, ${d}/dzień.`,
     pwErr401: 'Nieprawidłowy klucz API.', pwErr403: 'Niedostępne w Twoim planie PokéWallet: ',
     pwErr429: 'Limit zapytań wyczerpany — spróbuj za jakiś czas.', pwNetwork: 'Brak połączenia z PokéWallet.',
+    pwTimeout: 'PokéWallet nie odpowiedział w 20 s — spróbuj ponownie.', pwRetryIn: m => `(za ok. ${m} min)`,
+    pwNothingToValue: 'Wszystkie karty kolekcji mają świeże ceny (ważność w ustawieniu wyżej).',
+    pwValuedN: n => `Wyceniono ${n} ${plPlural(n, 'kartę', 'karty', 'kart')}`,
     pwValuing: (i, n) => `Wyceniam… ${i}/${n}`,
     pwValue: (v, p, n, left) => `Wartość kolekcji: ${v} (wycenione ${p} z ${n} kart${left ? `, do wyceny jeszcze ${left} — kliknij ponownie` : ''}).`,
     pwCacheCleared: 'Usunięto zapisane ceny.',
@@ -240,6 +243,9 @@ const I18N = {
     pwQuota: (h, d) => `Requests left: ${h}/h, ${d}/day.`,
     pwErr401: 'Invalid API key.', pwErr403: 'Not available on your PokéWallet plan: ',
     pwErr429: 'Rate limit reached — try again later.', pwNetwork: 'Could not reach PokéWallet.',
+    pwTimeout: 'PokéWallet did not answer within 20 s — try again.', pwRetryIn: m => `(in about ${m} min)`,
+    pwNothingToValue: 'Every card in your collection has a fresh price (validity set above).',
+    pwValuedN: n => `Priced ${n} ${enPlural(n, 'card', 'cards')}`,
     pwValuing: (i, n) => `Pricing… ${i}/${n}`,
     pwValue: (v, p, n, left) => `Collection value: ${v} (${p} of ${n} cards priced${left ? `, ${left} still to price — click again` : ''}).`,
     pwCacheCleared: 'Saved prices cleared.',
