@@ -15,7 +15,8 @@ function removeFromWish(id) {
 // zwraca true, gdy karta została dodana
 function toggleWish(id) {
   if (removeFromWish(id)) return false;
-  S.store.wish.push({ id, t: Date.now() });
+  const c = S.cardById.get(id);
+  S.store.wish.push({ id, t: Date.now(), ...(c && typeof defaultVariant === 'function' ? { v: defaultVariant(c) } : {}) });
   saveStore();
   return true;
 }
@@ -48,7 +49,8 @@ function renderWish(grid) {
   if (typeof cardValue === 'function') {
     const src = priceSource();
     for (const { c } of all) {
-      const v = cardValue(c.id, null, src, false);
+      const w = S.store.wish.find(x => x.id === c.id);
+      const v = cardValue(c.id, w?.v || null, src, false);
       if (v) { sum += v.value; cur = v.cur; }
     }
   }
@@ -56,7 +58,7 @@ function renderWish(grid) {
   if (!all.length) { grid.innerHTML = `<p class="empty">${t('wishEmpty')}</p>`; return; }
   const chips = `<div class="summary-chips sets-show">${[['new', t('wishNewest')], ['old', t('wishOldest')], ['name', t('wishByName')], ['set', t('wishBySet')]]
     .map(([v, l]) => `<button data-wish-sort="${v}" aria-pressed="${ws === v}">${l}</button>`).join('')}</div>`;
-  const cell = ({ c }) => {
+  const cell = ({ c, w }) => {
     const have = idx.get(c.id) || 0;
     return `<button class="wcard" data-card="${esc(c.id)}" aria-label="${esc(c.name)} ${esc(c.set.name)} ${esc(c.num)}">
       <span class="scard">
@@ -64,9 +66,9 @@ function renderWish(grid) {
         <img loading="lazy" decoding="async" alt="" src="${esc(c.img)}" onerror="this.remove()">
         <span class="scard-no">${esc(c.num)}${c.set.total ? '/' + c.set.total : ''}</span>
         ${have ? `<span class="scard-check" title="${esc(t('wishHave'))}">✓</span>` : '<span class="scard-wish" aria-hidden="true">♥</span>'}
-        ${typeof priceTag === 'function' ? priceTag(c.id, null) : ''}
+        ${typeof priceTag === 'function' ? priceTag(c.id, w.v || null) : ''}
       </span>
-      <span class="wcap"><b>${esc(c.name)}</b><small>${esc(c.set.name)} · ${esc(c.rarity || '—')}</small></span>
+      <span class="wcap"><b>${esc(c.name)}</b><small>${esc(c.set.name)} · ${esc(c.rarity || '—')}</small>${w.v ? `<small class="wvar">${esc(variantLabel(w.v))}</small>` : ''}</span>
     </button>`;
   };
   // wg daty: grupy dni dodania; wg nazwy/zestawu: jedna siatka
@@ -87,7 +89,7 @@ function bindWish() {
     const b = e.target.closest('#dlgWish');
     if (!b) return;
     const added = toggleWish(b.dataset.card);
-    b.outerHTML = wishButtonHTML(b.dataset.card);
+    openCardDialog(b.dataset.card); // odśwież okno (wybór szukanego typu karty)
     toast(added ? t('wishAdded') : t('wishRemoved'));
     afterCardChange();
   });

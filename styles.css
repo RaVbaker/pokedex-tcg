@@ -605,3 +605,11 @@ button.scan-side { border: 0; background: transparent; color: #fff; padding: 0; 
 .price-tag.stale, .tile-value.stale, .top-price.stale { opacity: .6; font-style: italic; }
 .price-tag.stale::before, .tile-value.stale::before, .top-price.stale::before { content: "≈ "; }
 .stale-note { font-size: 11px; font-weight: 700; color: #8a6d00; background: #fff3c4; border-radius: 6px; padding: 1px 6px; }
+
+/* Okno karty: posiadane egzemplarze i szukany typ z listy życzeń */
+.copies { display: grid; gap: 6px; border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+.copy-row { display: flex; align-items: center; gap: 8px; }
+.copy-row select, .wish-variant select { flex: 1; min-height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); padding: 0 10px; font-size: 16px; color: var(--text); }
+.copy-row .act { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--danger); }
+.wish-variant { border-color: #e0457b; }
+.wcap .wvar { color: #c0336a; }
