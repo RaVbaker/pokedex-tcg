@@ -602,10 +602,10 @@ async function fetchSetPrices(set, onProgress = () => {}) {
     const budget = +setting('pwSetBudget') || 12;
     const ttl = pwTtlMs();
     const tierNum = c => { const tr = rarityTier(c.rarity); return typeof tr === 'number' ? tr : 0; };
-    const cands = mapped
-      .filter(c => !(cache[c.id]?.pw && now - cache[c.id].at < ttl))
-      .sort((a, b) => tierNum(b) - tierNum(a) || numSort(b, a))
-      .slice(0, budget);
+    // najpierw karty bez żadnej ceny (od najrzadszych), potem nieświeże (od najstarszych)
+    const missingC = mapped.filter(c => !cache[c.id]).sort((a, b) => tierNum(b) - tierNum(a) || numSort(b, a));
+    const staleC = mapped.filter(c => cache[c.id] && now - cache[c.id].at >= ttl).sort((a, b) => cache[a.id].at - cache[b.id].at);
+    const cands = [...missingC, ...staleC].slice(0, budget);
     for (let i = 0; i < cands.length; i++) {
       onProgress(i + 1, cands.length);
       const c = cands[i];
@@ -654,9 +654,21 @@ function setTopHTML(set) {
   const { top, priced } = topCardsOfSet(set, n);
   const total = (S.cardsBySet.get(set.id) || []).length;
   // plan darmowy: kolejne kliknięcie wycenia następne najrzadsze karty; Pro: odświeża cały zestaw
+  // plan darmowy: „Wyceń kolejne” tylko gdy są karty bez ceny; potem „Odśwież nieświeże”; gdy wszystko świeże — brak akcji
   const freeMode = pwPlan() === 'free';
-  const label = !meta?.at || meta?.none ? t('topFetch') : freeMode ? t('topMore', +setting('pwSetBudget') || 12) : t('pwRefresh');
-  const btn = `<button class="btn ${meta?.at ? 'ghost' : ''} small" data-set-top="${esc(set.id)}">${label}</button>`;
+  const budget = +setting('pwSetBudget') || 12;
+  const map = pwMap(), cache = priceCache(), ttl = pwTtlMs(), now = Date.now();
+  const mapped = (S.cardsBySet.get(set.id) || []).filter(c => map[c.id]);
+  const missing = mapped.filter(c => !cache[c.id]).length;
+  const stale = mapped.filter(c => cache[c.id] && now - cache[c.id].at >= ttl).length;
+  let label = t('pwRefresh'), disabled = false;
+  if (!meta?.at || meta?.none) label = t('topFetch');
+  else if (freeMode) {
+    if (missing) label = t('topMore', Math.min(budget, missing));
+    else if (stale) label = t('topRefreshStale', Math.min(budget, stale));
+    else { label = t('topAllPriced'); disabled = true; }
+  }
+  const btn = `<button class="btn ${meta?.at ? 'ghost' : ''} small" data-set-top="${esc(set.id)}"${disabled ? ' disabled' : ''}>${label}</button>`;
   const rows = top.map((x, i) => `<li class="crow">
       <span class="top-rank">${i + 1}</span>
       <img class="thumb" loading="lazy" src="${esc(x.c.img)}" onerror="this.style.visibility='hidden'" alt="" data-card="${esc(x.c.id)}">

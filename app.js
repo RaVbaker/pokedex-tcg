@@ -6,8 +6,8 @@
 
 // ===== Stałe =====
 // Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
-const APP_VERSION = '15';
-const APP_DATE = '2026-11-04';
+const APP_VERSION = '16';
+const APP_DATE = '2026-11-05';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
 const ART = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
@@ -51,7 +51,7 @@ const I18N = {
     pwSetBudget: 'Plan darmowy: ile najrzadszych kart wyceniać w zestawie',
     topPricing: (i, n) => `Wyceniam ${i}/${n}…`, topDonePro: n => `Wyceniono cały zestaw: ${n} kart z cenami`,
     topDoneFree: (p, f) => `Wyceniono ${f} najrzadszych kart (z cenami: ${p})`,
-    topProMissing: 'Brak planu Pro — wyceniam najrzadsze karty (plan darmowy).', topMore: n => `Wyceń kolejne (${n})`,
+    topProMissing: 'Brak planu Pro — wyceniam najrzadsze karty (plan darmowy).', topMore: n => `Wyceń kolejne (${n})`, topRefreshStale: n => `Odśwież nieświeże (${n})`, topAllPriced: 'Wszystko wycenione',
     topAllFresh: 'Wszystkie karty tego zestawu z PokéWallet mają już świeże ceny.',
     topFreeNote: 'Plan darmowy: lista zestawu w PokéWallet nie zawiera cen, więc wyceniane są najrzadsze karty (po 1 zapytaniu, liczba w ⚙︎). Plan Pro wycenia cały zestaw jednym zapytaniem.', topFetch: 'Pobierz ceny zestawu', topLoading: 'Pobieram ceny zestawu…',
     topFrom: (n, total, d) => `ceny ${n} z ${total} kart${d ? ` · ${d}` : ''}`, topNoSet: 'Nie znaleziono tego zestawu w PokéWallet.',
@@ -89,13 +89,16 @@ const I18N = {
     viewWish: 'Życzenia', searchPhWish: 'Szukaj na liście życzeń',
     wishStatus: (n, v) => `Lista życzeń: ${n} ${plPlural(n, 'karta', 'karty', 'kart')}${v ? ` · wartość ok. ${v}` : ''}`,
     wishEmpty: 'Lista życzeń jest pusta. Dodaj brakującą kartę przyciskiem ♡ w oknie karty — z Pokédexu, widoku zestawu albo skanera.',
+    yourCopies: 'Twoje egzemplarze (typ karty można zmienić)', wishVariantLbl: 'Lista życzeń — szukany typ karty',
     wishAdd: 'Dodaj do listy życzeń', wishIn: 'Na liście życzeń — usuń', wishAdded: 'Dodano do listy życzeń', wishRemoved: 'Usunięto z listy życzeń',
     cardAddedWish: 'Dodano kartę do kolekcji i zdjęto z listy życzeń', wishHave: 'Masz już tę kartę',
     cardKind: 'Rodzaj', rarityLbl: 'Rzadkość', illus: 'Ilustracja', regMark: 'Znak regulacji',
     tiers: { 0: '—', 1: 'pospolita', 2: 'niepospolita', 3: 'rzadka', 4: 'bardzo rzadka', 5: 'ultra rzadka', 6: 'najrzadsza (sekretna)', promo: 'promo — nie z boosterów' },
     supLabel: { 'Pokémon': 'Pokémon', Trainer: 'Trener', Energy: 'Energia' },
     noDropRate: 'Szansa wypadnięcia z boostera (pull rate) nie jest dostępna w danych — zależy od zestawu.',
-    aboutAuthor: 'Autor: <a href="https://ravbaker.net" target="_blank" rel="noopener">Rafał Piekarski „RaVbaker”</a>',
+    donateText: 'Podoba Ci się aplikacja? Możesz postawić autorowi kawę.',
+    donateBtn: 'Wesprzyj przez Revolut',
+    aboutAuthor: 'Autor: <a href="https://ravbaker.net" target="_blank" rel="noopener">Rafał „RaVbaker” Piekarski</a>',
     aboutLegal: 'Pokémon, nazwy postaci, grafiki i karty Pokémon TCG są własnością i znakami towarowymi The Pokémon Company, Nintendo, Game Freak i Creatures Inc. To nieoficjalna, niekomercyjna strona fanowska, niezwiązana z tymi firmami ani przez nie wspierana.',
     aboutSec: 'O aplikacji', version: (v, d) => `Wersja ${v} (${d})`, swVersion: v => `Wersja offline (service worker): ${v}`,
     swNone: 'Tryb offline: nieaktywny', checkUpdate: 'Sprawdź aktualizacje', updChecking: 'Sprawdzam…',
@@ -167,7 +170,7 @@ const I18N = {
     pwSetBudget: 'Free plan: how many rarest cards to price per set',
     topPricing: (i, n) => `Pricing ${i}/${n}…`, topDonePro: n => `Whole set priced: ${n} cards with prices`,
     topDoneFree: (p, f) => `Priced the ${f} rarest cards (with prices: ${p})`,
-    topProMissing: 'No Pro plan — pricing the rarest cards (free plan).', topMore: n => `Price next (${n})`,
+    topProMissing: 'No Pro plan — pricing the rarest cards (free plan).', topMore: n => `Price next (${n})`, topRefreshStale: n => `Refresh stale (${n})`, topAllPriced: 'All priced',
     topAllFresh: 'Every card of this set from PokéWallet already has fresh prices.',
     topFreeNote: 'Free plan: the PokéWallet set listing has no prices, so the rarest cards are priced (1 request each, number in ⚙︎). The Pro plan prices the whole set in one request.', topFetch: 'Fetch set prices', topLoading: 'Fetching set prices…',
     topFrom: (n, total, d) => `prices for ${n} of ${total} cards${d ? ` · ${d}` : ''}`, topNoSet: 'This set was not found in PokéWallet.',
@@ -205,13 +208,16 @@ const I18N = {
     viewWish: 'Wishlist', searchPhWish: 'Search the wishlist',
     wishStatus: (n, v) => `Wishlist: ${n} ${enPlural(n, 'card', 'cards')}${v ? ` · about ${v}` : ''}`,
     wishEmpty: 'Your wishlist is empty. Add a missing card with the ♡ button in the card window — from the Pokédex, a set view or the scanner.',
+    yourCopies: 'Your copies (card type can be changed)', wishVariantLbl: 'Wishlist — wanted card type',
     wishAdd: 'Add to wishlist', wishIn: 'On wishlist — remove', wishAdded: 'Added to wishlist', wishRemoved: 'Removed from wishlist',
     cardAddedWish: 'Card added to collection and removed from wishlist', wishHave: 'You already have this card',
     cardKind: 'Kind', rarityLbl: 'Rarity', illus: 'Illustrator', regMark: 'Regulation mark',
     tiers: { 0: '—', 1: 'common', 2: 'uncommon', 3: 'rare', 4: 'very rare', 5: 'ultra rare', 6: 'rarest (secret)', promo: 'promo — not from boosters' },
     supLabel: { 'Pokémon': 'Pokémon', Trainer: 'Trainer', Energy: 'Energy' },
     noDropRate: 'Booster pull rates are not available in the data — they depend on the set.',
-    aboutAuthor: 'Made by <a href="https://ravbaker.net" target="_blank" rel="noopener">Rafał Piekarski “RaVbaker”</a>',
+    donateText: 'Enjoying the app? You can buy the author a coffee.',
+    donateBtn: 'Support via Revolut',
+    aboutAuthor: 'Made by <a href="https://ravbaker.net" target="_blank" rel="noopener">Rafał “RaVbaker” Piekarski</a>',
     aboutLegal: 'Pokémon, character names, artwork and Pokémon TCG cards are property and trademarks of The Pokémon Company, Nintendo, Game Freak and Creatures Inc. This is an unofficial, non-commercial fan site, not affiliated with or endorsed by them.',
     aboutSec: 'About', version: (v, d) => `Version ${v} (${d})`, swVersion: v => `Offline version (service worker): ${v}`,
     swNone: 'Offline mode: not active', checkUpdate: 'Check for updates', updChecking: 'Checking…',
@@ -925,11 +931,39 @@ function openCardDialog(cardId) {
         <select id="variantSel">${variantOptions(guess, c)}</select>
         <button class="btn ok" id="dlgAdd" data-dex="${dex}" data-card="${esc(c.id)}">${have ? t('addMore') : t('addBtn')}</button>
       </div>
-      ${have ? `<div class="btn-row dlg-actions"><button class="btn ghost" id="dlgRemove" data-card="${esc(c.id)}">${t('removeOne')}</button></div>` : ''}
+      ${copiesHTML(c)}
+      ${inWish(c.id) ? wishVariantHTML(c) : ''}
     </div>`;
   const dlg = $('#cardDlg');
   if (!dlg.open) dlg.showModal();
   renderPriceBox(c);
+}
+
+// posiadane egzemplarze tej karty (zmiana wariantu / usunięcie) — klucz „dex:indeks” albo „o:indeks” (trenerzy, energie)
+function copyRefs(cardId) {
+  const refs = [];
+  for (const [dex, o] of Object.entries(S.store.owned)) o.cards.forEach((x, i) => { if (x.id === cardId) refs.push({ k: `${dex}:${i}`, x }); });
+  S.store.other.forEach((x, i) => { if (x.id === cardId) refs.push({ k: `o:${i}`, x }); });
+  return refs;
+}
+function copyByKey(k) {
+  const [a, i] = k.split(':');
+  const list = a === 'o' ? S.store.other : S.store.owned[a]?.cards;
+  return list ? { list, i: +i } : null;
+}
+function copiesHTML(c) {
+  const refs = copyRefs(c.id);
+  if (!refs.length) return '';
+  return `<div class="copies"><div class="muted small"><b>${t('yourCopies')}</b></div>${refs.map((r, n) => `
+    <div class="copy-row"><span class="muted small">${n + 1}.</span>
+      <select data-copy="${r.k}" aria-label="${t('cardType')}">${variantOptions(r.x.v, c)}</select>
+      ${typeof priceTag === 'function' ? priceTag(c.id, r.x.v) : ''}
+      <button class="act rm" data-copy-rm="${r.k}" aria-label="${t('removeCard')}">✕</button></div>`).join('')}</div>`;
+}
+function wishVariantHTML(c) {
+  const w = S.store.wish.find(x => x.id === c.id);
+  return `<div class="copies wish-variant"><label class="muted small" for="wishVariantSel"><b>♥ ${t('wishVariantLbl')}</b></label>
+    <select id="wishVariantSel" data-wish-variant="${esc(c.id)}">${variantOptions(w?.v || defaultVariant(c), c)}</select></div>`;
 }
 
 // ===== Nawigacja w szczegółach + swipe =====
@@ -1027,7 +1061,7 @@ function exportCSV() {
   for (const w of S.store.wish) {
     const c = S.cardById.get(w.id);
     const added = w.t ? new Date(w.t).toISOString().slice(0, 10) : '';
-    lines.push([c?.dex[0] || 0, c?.name || '', 0, w.id, c?.set.id, c?.set.name, c?.set.series, c?.num, c?.set.total, c?.rarity, c?.name, '', '', '', added, ...csvPrice(w.id, null), 1].map(csvCell).join(','));
+    lines.push([c?.dex[0] || 0, c?.name || '', 0, w.id, c?.set.id, c?.set.name, c?.set.series, c?.num, c?.set.total, c?.rarity, c?.name, w.v || '', '', '', added, ...csvPrice(w.id, w.v || null), 1].map(csvCell).join(','));
   }
   const blob = new Blob(['﻿' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -1092,7 +1126,7 @@ function importCSV(text, merge) {
       }
       if (wid && S.cardById.has(wid) && !wish.some(w => w.id === wid)) {
         const tw = iAdded >= 0 && r[iAdded] ? Date.parse(r[iAdded]) : NaN;
-        wish.push({ id: wid, t: isNaN(tw) ? Date.now() : tw });
+        wish.push({ id: wid, t: isNaN(tw) ? Date.now() : tw, ...(iVar >= 0 && r[iVar]?.trim() ? { v: r[iVar].trim() } : {}) });
         nWish++;
       }
       continue;
@@ -1186,6 +1220,8 @@ let swVersion = null;
 function renderVersion() {
   $('#appVersion').textContent = t('version', APP_VERSION, APP_DATE);
   $('#aboutAuthor').innerHTML = t('aboutAuthor');
+  $('#donateText').textContent = t('donateText');
+  $('#donateBtn').textContent = '☕ ' + t('donateBtn');
   $('#aboutLegal').textContent = t('aboutLegal');
   $('#setVersion').textContent = 'v' + APP_VERSION;
   $('#swVersion').textContent = swVersion ? t('swVersion', swVersion) : t('swNone');
@@ -1402,6 +1438,16 @@ function bindEvents() {
       if (typeof scannerAfterAdd === 'function') scannerAfterAdd();
       return;
     }
+    const crm = e.target.closest('[data-copy-rm]');
+    if (crm) {
+      const ref = copyByKey(crm.dataset.copyRm);
+      const cardId = ref?.list[ref.i]?.id;
+      if (ref) { ref.list.splice(ref.i, 1); saveStore(); }
+      afterCardChange();
+      toast(t('cardRemoved'));
+      if (cardId) openCardDialog(cardId);
+      return;
+    }
     const rmb = e.target.closest('#dlgRemove');
     if (rmb) {
       removeOneCard(rmb.dataset.card);
@@ -1416,6 +1462,23 @@ function bindEvents() {
   bindScanner();
   bindPrices();
   bindWish();
+
+  // zmiana wariantu posiadanego egzemplarza / karty z listy życzeń (w oknie karty)
+  $('#cardDlg').addEventListener('change', e => {
+    const cs = e.target.closest('[data-copy]');
+    if (cs) {
+      const ref = copyByKey(cs.dataset.copy);
+      if (ref && ref.list[ref.i]) { ref.list[ref.i].v = cs.value; saveStore(); afterCardChange(); toast(t('variantSaved')); }
+      const tag = cs.parentElement.querySelector('.price-tag');
+      if (tag && typeof priceTag === 'function') tag.outerHTML = priceTag(ref.list[ref.i].id, cs.value) || '';
+      return;
+    }
+    const ws = e.target.closest('[data-wish-variant]');
+    if (ws) {
+      const w = S.store.wish.find(x => x.id === ws.dataset.wishVariant);
+      if (w) { w.v = ws.value; saveStore(); afterCardChange(); toast(t('variantSaved')); }
+    }
+  });
 
   // ustawienia
   const sd = $('#settingsDlg');
