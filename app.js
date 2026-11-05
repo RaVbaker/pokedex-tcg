@@ -942,6 +942,68 @@ function cardInfoHTML(c) {
   </div>`;
 }
 
+// ===== Instrukcja: jak rozpoznać typ karty i rzadkość (⚙︎) =====
+const GUIDE = {
+  pl: {
+    title: 'Jak rozpoznać typ karty i rzadkość',
+    vHead: 'Typ karty (wariant)',
+    vIntro: 'Przechyl kartę pod światło i zobacz, <b>co błyszczy</b>.',
+    variants: [
+      ['Normal', 'Nic nie błyszczy — ani ilustracja, ani reszta karty. Tak wygląda większość kart Common i Uncommon.'],
+      ['Holo', 'Błyszczy (folia, tęczowy połysk) <b>sama ilustracja</b>, reszta karty jest matowa. Karty ex, V, VMAX, VSTAR, GX oraz ilustracyjne (Illustration / Special Illustration, Hyper) mają połysk lub fakturę na całej karcie i istnieją tylko w tej jednej wersji — wybierz Holo.'],
+      ['Reverse Holo', 'Odwrotnie niż holo: <b>błyszczy cała karta</b> (ramka, tło pod tekstem), a ilustracja jest matowa. Od 2002 r. prawie każda zwykła karta (Common, Uncommon, Rare) ma też wersję reverse — jest jedna na booster.'],
+      ['Reverse Holo (Poké Ball / Master Ball)', 'Reverse z wzorem <b>Poké Balli</b> albo <b>Master Balli</b> w folii (zamiast zwykłego połysku). Tylko w zestawach 151 i Prismatic Evolutions; Master Ball jest dużo rzadszy.'],
+      ['1st Edition', 'Znaczek <b>„Edition 1”</b> w czarnym kółku po lewej stronie, pod ilustracją. Tylko stare zestawy Wizards of the Coast (1999–2002).'],
+      ['Shadowless', 'Tylko Base Set: brak <b>cienia</b> przy prawej krawędzi ramki ilustracji (późniejszy druk „Unlimited” ma wyraźny cień) i brak znaczka 1st Edition.'],
+      ['Promo / Stamped', 'Zamiast symbolu rzadkości czarna gwiazdka z napisem <b>PROMO</b> albo dodatkowy nadruk na ilustracji: logo zestawu, „Prerelease”, „Staff”, logo wydarzenia lub sklepu.'],
+      ['Inny', 'Wszystko, co nie pasuje wyżej: błędy druku, karty jumbo, inne wersje językowe itp.'],
+    ],
+    rHead: 'Rzadkość — symbol przy numerze karty',
+    rIntro: 'Symbol jest na dole karty, obok numeru (np. <b>199/165</b>). W nowych zestawach (od Scarlet & Violet) liczy się też jego kolor:',
+    rarities: [
+      ['Common', 'zwykła'], ['Uncommon', 'niezwykła'], ['Rare', 'rzadka (czarna gwiazdka)'],
+      ['Double Rare', 'karty ex (czarne gwiazdki)'], ['Illustration Rare', 'ilustracja na całą kartę (złota gwiazdka)'],
+      ['Ultra Rare', 'pełna karta ex / trener (srebrne gwiazdki)'], ['Special Illustration Rare', 'specjalna ilustracja (złote gwiazdki)'],
+      ['Hyper Rare', 'złota karta (złote gwiazdki)'], ['Shiny Rare', 'shiny Pokémon'], ['Shiny Ultra Rare', 'shiny ex'],
+      ['ACE SPEC Rare', 'karta ACE SPEC (różowa gwiazdka)'],
+    ],
+    rOld: 'Starsze karty (do Sword & Shield) mają tylko ● ◆ ★ — czarna ★ oznacza każdą rzadką kartę, także holo, V, VMAX i sekretne. <b>Karta sekretna</b> ma numer większy niż rozmiar zestawu, np. <b>201/165</b>.',
+  },
+  en: {
+    title: 'How to tell card type and rarity',
+    vHead: 'Card type (variant)',
+    vIntro: 'Tilt the card under a light and look at <b>what shines</b>.',
+    variants: [
+      ['Normal', 'Nothing shines — neither the artwork nor the rest of the card. Most Common and Uncommon cards look like this.'],
+      ['Holo', '<b>Only the artwork</b> is foil (rainbow shine); the rest of the card is matte. ex, V, VMAX, VSTAR, GX and illustration cards (Illustration / Special Illustration, Hyper) have shine or texture over the whole card and exist in this one version only — pick Holo.'],
+      ['Reverse Holo', 'The opposite of holo: <b>the whole card shines</b> (frame, text box background) while the artwork is matte. Since 2002 almost every regular card (Common, Uncommon, Rare) also has a reverse version — one per booster pack.'],
+      ['Reverse Holo (Poké Ball / Master Ball)', 'A reverse with a <b>Poké Ball</b> or <b>Master Ball</b> pattern in the foil instead of the regular shine. Only in 151 and Prismatic Evolutions; Master Ball is much rarer.'],
+      ['1st Edition', 'A black circle <b>“Edition 1”</b> stamp on the left, below the artwork. Only old Wizards of the Coast sets (1999–2002).'],
+      ['Shadowless', 'Base Set only: <b>no drop shadow</b> along the right edge of the artwork frame (the later “Unlimited” print has a clear shadow) and no 1st Edition stamp.'],
+      ['Promo / Stamped', 'A black star with <b>PROMO</b> instead of a rarity symbol, or an extra stamp on the artwork: set logo, “Prerelease”, “Staff”, an event or store logo.'],
+      ['Other', 'Anything that doesn’t fit above: misprints, jumbo cards, other languages, etc.'],
+    ],
+    rHead: 'Rarity — the symbol next to the card number',
+    rIntro: 'The symbol is at the bottom of the card, next to the number (e.g. <b>199/165</b>). In newer sets (Scarlet & Violet onwards) its colour matters too:',
+    rarities: [
+      ['Common', 'common'], ['Uncommon', 'uncommon'], ['Rare', 'rare (black star)'],
+      ['Double Rare', 'ex cards (black stars)'], ['Illustration Rare', 'full-art illustration (gold star)'],
+      ['Ultra Rare', 'full-art ex / trainer (silver stars)'], ['Special Illustration Rare', 'special illustration (gold stars)'],
+      ['Hyper Rare', 'gold card (gold stars)'], ['Shiny Rare', 'shiny Pokémon'], ['Shiny Ultra Rare', 'shiny ex'],
+      ['ACE SPEC Rare', 'ACE SPEC card (pink star)'],
+    ],
+    rOld: 'Older cards (up to Sword & Shield) only use ● ◆ ★ — a black ★ marks any rare card, including holo, V, VMAX and secret ones. A <b>secret card</b> has a number higher than the set size, e.g. <b>201/165</b>.',
+  },
+};
+function guideHTML() {
+  const g = GUIDE[LANG] || GUIDE.pl;
+  return `<h4>${g.vHead}</h4><p class="small">${g.vIntro}</p>
+    <dl class="guide-list">${g.variants.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>
+    <h4>${g.rHead}</h4><p class="small">${g.rIntro}</p>
+    <dl class="guide-list rar">${g.rarities.map(([r, d]) => `<dt>${raritySymHTML(r)} ${esc(r)}</dt><dd>${d}</dd>`).join('')}</dl>
+    <p class="small">${g.rOld}</p>`;
+}
+
 // ===== Dialog karty =====
 function openCardDialog(cardId) {
   const c = S.cardById.get(cardId);
@@ -1246,6 +1308,7 @@ function syncFilterInputs() {
 function updateDataInfo() {
   const o = Object.values(S.store.owned);
   $('#dataInfo').textContent = t('dataInfo', o.length, totalOwnedCards());
+  $('#guideBody').innerHTML = guideHTML();
   $('#sourcesText').innerHTML = t('sources', S.sets.length, S.cards.length, esc(S.sets[S.sets.length - 1]?.name));
   askSwVersion();
   renderVersion();
@@ -1256,6 +1319,7 @@ let swVersion = null;
 function renderVersion() {
   $('#appVersion').textContent = t('version', APP_VERSION, APP_DATE);
   $('#aboutAuthor').innerHTML = t('aboutAuthor');
+  $('#guideTitle').textContent = (GUIDE[LANG] || GUIDE.pl).title;
   $('#donateText').textContent = t('donateText');
   $('#donateBtn').textContent = '☕ ' + t('donateBtn');
   $('#aboutLegal').textContent = t('aboutLegal');

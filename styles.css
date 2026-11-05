@@ -622,3 +622,14 @@ button.scan-side { border: 0; background: transparent; color: #fff; padding: 0; 
 .rsym.gold { color: #c9a227; }
 .rsym.silver { color: #8a96a3; }
 .rsym.pink { color: #d6489a; }
+.guide summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; }
+.guide summary::-webkit-details-marker { display: none; }
+.guide summary::after { content: '›'; margin-left: auto; font-size: 20px; color: var(--muted); transition: transform .2s; }
+.guide[open] summary::after { transform: rotate(90deg); }
+.guide summary h3 { margin: 0; }
+.guide h4 { margin: 14px 0 4px; font-size: 14px; }
+.guide p { margin: 4px 0 8px; }
+.guide-list { margin: 0; display: grid; gap: 2px 0; }
+.guide-list dt { font-weight: 700; font-size: 14px; margin-top: 8px; }
+.guide-list dd { margin: 2px 0 0; font-size: 14px; color: var(--muted); line-height: 1.4; }
+.guide-list.rar dt { margin-top: 6px; }
