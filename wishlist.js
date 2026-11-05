@@ -68,7 +68,7 @@ function renderWish(grid) {
         ${have ? `<span class="scard-check" title="${esc(t('wishHave'))}">✓</span>` : '<span class="scard-wish" aria-hidden="true">♥</span>'}
         ${typeof priceTag === 'function' ? priceTag(c.id, w.v || null) : ''}
       </span>
-      <span class="wcap"><b>${esc(c.name)}</b><small>${esc(c.set.name)} · ${esc(c.rarity || '—')}</small>${w.v ? `<small class="wvar">${esc(variantLabel(w.v))}</small>` : ''}</span>
+      <span class="wcap"><b>${esc(c.name)}</b><small>${esc(c.set.name)} · ${raritySymHTML(c.rarity)} ${esc(c.rarity || '—')}</small>${w.v ? `<small class="wvar">${esc(variantLabel(w.v))}</small>` : ''}</span>
     </button>`;
   };
   // wg daty: grupy dni dodania; wg nazwy/zestawu: jedna siatka

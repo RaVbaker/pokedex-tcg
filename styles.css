@@ -614,3 +614,22 @@ button.scan-side { border: 0; background: transparent; color: #fff; padding: 0; 
 .wish-variant { border-color: #e0457b; }
 .wcap .wvar { color: #c0336a; }
 .donate-btn { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.set-filter { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+.set-filter .card-filter { flex: 1 1 180px; width: auto; }
+.set-filter select { flex: 1 1 160px; min-height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); padding: 6px 10px; font-size: 16px; margin-bottom: 8px; max-width: 100%; }
+.link-btn { background: none; border: 0; padding: 0; color: var(--dex-red); text-decoration: underline; font: inherit; cursor: pointer; }
+.rsym { letter-spacing: -1px; }
+.rsym.gold { color: #c9a227; }
+.rsym.silver { color: #8a96a3; }
+.rsym.pink { color: #d6489a; }
+.guide summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; }
+.guide summary::-webkit-details-marker { display: none; }
+.guide summary::after { content: '›'; margin-left: auto; font-size: 20px; color: var(--muted); transition: transform .2s; }
+.guide[open] summary::after { transform: rotate(90deg); }
+.guide summary h3 { margin: 0; }
+.guide h4 { margin: 14px 0 4px; font-size: 14px; }
+.guide p { margin: 4px 0 8px; }
+.guide-list { margin: 0; display: grid; gap: 2px 0; }
+.guide-list dt { font-weight: 700; font-size: 14px; margin-top: 8px; }
+.guide-list dd { margin: 2px 0 0; font-size: 14px; color: var(--muted); line-height: 1.4; }
+.guide-list.rar dt { margin-top: 6px; }

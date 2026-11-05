@@ -3,7 +3,7 @@
  */
 'use strict';
 
-const SETV = { id: null, show: 'all' };
+const SETV = { id: null, show: 'all', q: '', rarity: '' };
 
 // Kompletność zestawu: karty „zwykłe” (numer ≤ printedTotal) i sekretne (powyżej lub z literami)
 function setProgress(set) {
@@ -91,6 +91,8 @@ function openSet(id, push = true) {
   if (!set) return;
   SETV.id = id;
   SETV.show = 'all';
+  SETV.q = '';
+  SETV.rarity = '';
   const el = $('#setView');
   const wasHidden = el.hidden;
   el.hidden = false;
@@ -112,7 +114,20 @@ function renderSetView() {
   if (!set) return;
   const pr = setProgress(set);
   const idx = ownedIndex();
-  const cards = (S.cardsBySet.get(set.id) || []).slice().sort(numSort);
+  const allCards = (S.cardsBySet.get(set.id) || []).slice().sort(numSort);
+  // rzadkości w zestawie (od najczęstszych do najrzadszych) do filtra
+  const rarCount = new Map();
+  for (const c of allCards) rarCount.set(c.rarity || '', (rarCount.get(c.rarity || '') || 0) + 1);
+  const tierN = r => { const x = rarityTier(r); return typeof x === 'number' ? x : 7; };
+  const rarities = [...rarCount.keys()].sort((a, b) => tierN(a) - tierN(b) || a.localeCompare(b, 'en'));
+  if (SETV.rarity && !rarCount.has(SETV.rarity)) SETV.rarity = '';
+  // filtr: rzadkość + nazwa / numer (sam numer pasuje dokładnie, „25/165” też)
+  const q = norm(SETV.q.trim());
+  const qNum = /^\d+[a-z]*(\/\d*)?$/i.test(q) ? normNum(q.split('/')[0]) : null;
+  const cards = allCards.filter(c => (!SETV.rarity || (c.rarity || '') === SETV.rarity) &&
+    (!q || (qNum !== null ? c.nn === qNum : norm(`${c.name} ${c.num} ${c.rarity}`).includes(q))));
+  const filtered = !!(q || SETV.rarity);
+  const haveN = cards.filter(c => idx.has(c.id)).length;
   let list = cards.filter(c => SETV.show === 'all' || (SETV.show === 'owned') === idx.has(c.id));
   // sortowanie wg wartości (malejąco) — tylko z kluczem API; bez ceny na końcu wg numeru
   const hasPrices = typeof pwKey === 'function' && !!pwKey();
@@ -158,8 +173,16 @@ function renderSetView() {
       </div>
     </div>
     ${setTopHTML(set)}
-    <div class="summary-chips">${chip('all', t('showAll'), cards.length)}${chip('missing', t('showMissing'), cards.length - pr.allHave)}${chip('owned', t('showOwned'), pr.allHave)}</div>
+    <div class="set-filter">
+      <input class="card-filter" id="setQ" type="search" placeholder="${esc(t('setFilterPh'))}" value="${esc(SETV.q)}" autocomplete="off" enterkeyhint="search">
+      <select id="setRarity" aria-label="${esc(t('rarityLbl'))}">
+        <option value="">${t('allRarities')}</option>
+        ${rarities.map(r => `<option value="${esc(r)}"${r === SETV.rarity ? ' selected' : ''}>${esc((raritySymbol(r).s ? raritySymbol(r).s + '  ' : '') + (r || '—'))} (${rarCount.get(r)})</option>`).join('')}
+      </select>
+    </div>
+    <div class="summary-chips">${chip('all', t('showAll'), cards.length)}${chip('missing', t('showMissing'), cards.length - haveN)}${chip('owned', t('showOwned'), haveN)}</div>
     ${sortChips}${sortVal ? `<p class="muted small value-hint">${t('valueHint')}</p>` : ''}
+    ${!list.length ? `<p class="muted">${t('noCards')}${filtered ? ` <button class="link-btn" data-set-clear>${t('clearFilter')}</button>` : ''}</p>` : ''}
     <div class="set-cards">${list.map(c => {
       const n = idx.get(c.id) || 0;
       const secret = pr.secret > 0 && !(/^\d+$/.test(c.num) && parseInt(c.num, 10) <= set.total);
@@ -176,7 +199,23 @@ function bindSets() {
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !$('#setView').hidden && $('#scanner').hidden && !document.querySelector('dialog[open]')) closeSet();
   });
+  // pole wyszukiwania jest renderowane od nowa — przywracamy fokus i kursor
+  $('#setInner').addEventListener('input', e => {
+    if (e.target.id !== 'setQ') return;
+    SETV.q = e.target.value;
+    const pos = e.target.selectionStart;
+    renderSetView();
+    const el = $('#setQ');
+    el.focus();
+    try { el.setSelectionRange(pos, pos); } catch { /* type=search */ }
+  });
+  $('#setInner').addEventListener('change', e => {
+    if (e.target.id !== 'setRarity') return;
+    SETV.rarity = e.target.value;
+    renderSetView();
+  });
   $('#setInner').addEventListener('click', e => {
+    if (e.target.closest('[data-set-clear]')) { SETV.q = ''; SETV.rarity = ''; renderSetView(); return; }
     const sh = e.target.closest('[data-show]');
     if (sh) { SETV.show = sh.dataset.show; renderSetView(); return; }
     if (e.target.closest('[data-top-toggle]')) {

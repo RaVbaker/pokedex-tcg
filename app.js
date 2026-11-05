@@ -6,7 +6,7 @@
 
 // ===== Stałe =====
 // Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
-const APP_VERSION = '16';
+const APP_VERSION = '17';
 const APP_DATE = '2026-11-05';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
@@ -116,6 +116,7 @@ const I18N = {
     setsValue: v => `wartość ${v}`, setValueShort: v => `wartość ${v}`,
     setsAll: 'Wszystkie', setsStarted: 'Rozpoczęte', setsDone: 'Ukończone', setsNone: 'Brak zestawów.',
     secret: (h, n) => `+ sekretne ${h}/${n}`, complete: 'Komplet!', setCards: 'Karty w zestawie',
+    setFilterPh: 'Szukaj w zestawie: nazwa lub numer…', allRarities: 'Wszystkie rzadkości', clearFilter: 'Wyczyść filtr',
     showAll: 'Wszystkie', showMissing: 'Brakuje', showOwned: 'Mam', back: 'Wstecz',
     removeOne: 'Usuń 1 egz.', cardRemoved: 'Usunięto kartę', addMore: 'Dodaj kolejny',
     scan: 'Skanuj kartę', scanHint: 'Krawędzie karty dopasuj do białej ramki — nazwa i HP w górnym żółtym pasie, numer w dolnym. Gdy obraz skacze, odsuń telefon (~25–30 cm) i ustaw 2×.', scanZoneName: 'Nazwa · HP', scanZoneNum: 'Numer', scanZoom: 'Powiększenie', scanCapture: 'Zrób zdjęcie',
@@ -150,6 +151,13 @@ const I18N = {
     pwValuing: (i, n) => `Wyceniam… ${i}/${n}`,
     pwValue: (v, p, n, left) => `Wartość kolekcji: ${v} (wycenione ${p} z ${n} kart${left ? `, do wyceny jeszcze ${left} — kliknij ponownie` : ''}).`,
     pwCacheCleared: 'Usunięto zapisane ceny.',
+    pwBackupHint: 'Zapisane ceny są w pamięci przeglądarki. Zrób kopię, żeby nie pobierać ich ponownie (np. na innym urządzeniu).',
+    pwExport: 'Eksport cen',
+    pwImport: 'Import cen',
+    pwExported: n => `Wyeksportowano ceny ${n} kart.`,
+    pwImported: (n, u) => `Zaimportowano ceny: ${n} nowych, ${u} zaktualizowanych.`,
+    pwImportBad: 'to nie jest plik z cenami Pokédex TCG.',
+    pwImportError: 'Nie udało się zaimportować cen: ',
     pwVariant: 'Wariant', pwMarket: 'Rynkowa', pwTrend: 'Trend', pwLow: 'Min', pwHigh: 'Maks', pwAvg30: 'Śr. 30 dni',
     pwOwnedValue: (v, p) => `Wartość moich kart: ${v} (wycenione: ${p})`,
     variants: { Other: 'Inny' },
@@ -235,6 +243,7 @@ const I18N = {
     setsValue: v => `value ${v}`, setValueShort: v => `value ${v}`,
     setsAll: 'All', setsStarted: 'Started', setsDone: 'Completed', setsNone: 'No sets.',
     secret: (h, n) => `+ secret ${h}/${n}`, complete: 'Complete!', setCards: 'Cards in set',
+    setFilterPh: 'Search this set: name or number…', allRarities: 'All rarities', clearFilter: 'Clear filter',
     showAll: 'All', showMissing: 'Missing', showOwned: 'Owned', back: 'Back',
     removeOne: 'Remove 1 copy', cardRemoved: 'Card removed', addMore: 'Add another',
     scan: 'Scan card', scanHint: 'Align the card edges with the white frame — name and HP in the top yellow band, number in the bottom one. If the image jumps, move the phone back (~25–30 cm) and set 2×.', scanZoneName: 'Name · HP', scanZoneNum: 'Number', scanZoom: 'Zoom', scanCapture: 'Capture',
@@ -269,6 +278,13 @@ const I18N = {
     pwValuing: (i, n) => `Pricing… ${i}/${n}`,
     pwValue: (v, p, n, left) => `Collection value: ${v} (${p} of ${n} cards priced${left ? `, ${left} still to price — click again` : ''}).`,
     pwCacheCleared: 'Saved prices cleared.',
+    pwBackupHint: 'Saved prices live in browser storage. Back them up so you don’t have to fetch them again (e.g. on another device).',
+    pwExport: 'Export prices',
+    pwImport: 'Import prices',
+    pwExported: n => `Exported prices of ${n} cards.`,
+    pwImported: (n, u) => `Imported prices: ${n} new, ${u} updated.`,
+    pwImportBad: 'not a Pokédex TCG prices file.',
+    pwImportError: 'Could not import prices: ',
     pwVariant: 'Variant', pwMarket: 'Market', pwTrend: 'Trend', pwLow: 'Low', pwHigh: 'High', pwAvg30: '30-day avg',
     pwOwnedValue: (v, p) => `My cards value: ${v} (${p} priced)`,
     variants: {},
@@ -747,7 +763,7 @@ function renderDetail() {
 function cardLine(c) {
   const year = c.set.date ? c.set.date.slice(0, 4) : '';
   const total = c.set.total ? '/' + c.set.total : '';
-  return `<span><span class="num">${esc(c.num)}${total}</span> · ${esc(c.rarity || '—')}${c.sub.length ? ' · ' + esc(c.sub.join(', ')) : ''}${year ? ' · ' + year : ''}</span>`;
+  return `<span><span class="num">${esc(c.num)}${total}</span> · ${raritySymHTML(c.rarity)} ${esc(c.rarity || '—')}${c.sub.length ? ' · ' + esc(c.sub.join(', ')) : ''}${year ? ' · ' + year : ''}</span>`;
 }
 // ===== Warianty karty dostępne dla konkretnej karty =====
 // 1) z zapisanych cen PokéWallet (TCGplayer zna dokładne wersje: Normal, Holofoil, Reverse Holofoil, 1st Edition…)
@@ -796,9 +812,10 @@ function availableVariants(c) {
   out.add('Other');
   return VARIANTS.filter(v => out.has(v));
 }
+// domyślny typ karty: pierwszy z góry, który ma znaną niezerową cenę (z zapisanych cen); bez cen — pierwszy z listy
 function defaultVariant(c, list = availableVariants(c)) {
-  const holoR = /holo|rare/i.test(c.rarity) && !/common|uncommon/i.test(c.rarity);
-  return holoR && list.includes('Holo') ? 'Holo' : list[0];
+  const priced = typeof variantHasPrice === 'function' ? list.find(v => variantHasPrice(c.id, v)) : null;
+  return priced || list[0];
 }
 function variantOptions(selected, card = null) {
   const list = card ? availableVariants(card) : VARIANTS;
@@ -810,7 +827,8 @@ function refreshVariantSelect(card) {
   const sel = $('#variantSel');
   if (!sel || $('#priceBox')?.dataset.card !== card.id) return;
   const list = availableVariants(card);
-  const cur = list.includes(sel.value) ? sel.value : defaultVariant(card, list);
+  // dopóki użytkownik sam nie wybrał typu, po pobraniu ceny ustaw typ z ceną
+  const cur = list.includes(sel.value) && sel.dataset.touched ? sel.value : defaultVariant(card, list);
   sel.innerHTML = variantOptions(cur, card);
 }
 function ownedSectionHTML(pk) {
@@ -888,7 +906,25 @@ function rarityTier(r) {
   if (/ultra|^illustration rare|^shiny rare|ace spec|black white|futuristic|mega_attack/i.test(r)) return 5;
   return 4;
 }
-const RARITY_SYMBOL = { 1: '●', 2: '◆', 3: '★', 4: '★★', 5: '★★★', 6: '✦' };
+// symbol rzadkości tak jak nadrukowany na karcie (era Scarlet & Violet / Mega; starsze ery: ● ◆ ★)
+// col: kolor symbolu na karcie (złoty / srebrny / różowy), pokazywany tam, gdzie da się pokolorować tekst
+function raritySymbol(r) {
+  const x = String(r || '').toLowerCase().replace(/_/g, ' ');
+  if (!x) return { s: '', col: '' };
+  if (x === 'common') return { s: '●', col: '' };
+  if (x === 'uncommon') return { s: '◆', col: '' };
+  if (x === 'double rare') return { s: '★★', col: '' };
+  if (x === 'ultra rare') return { s: '★★', col: 'silver' };
+  if (x === 'illustration rare') return { s: '★', col: 'gold' };
+  if (x === 'special illustration rare') return { s: '★★', col: 'gold' };
+  if (x === 'hyper rare' || x === 'mega hyper rare') return { s: '★★★', col: 'gold' };
+  if (x === 'shiny rare') return { s: '✦', col: 'gold' };
+  if (x === 'shiny ultra rare') return { s: '✦✦', col: 'gold' };
+  if (x === 'ace spec rare') return { s: '★', col: 'pink' };
+  if (x === 'mega attack rare') return { s: '★★', col: 'silver' };
+  return { s: '★', col: '' };
+}
+const raritySymHTML = r => { const { s, col } = raritySymbol(r); return s ? `<span class="rsym${col ? ' ' + col : ''}" aria-hidden="true">${s}</span>` : ''; };
 function cardInfoHTML(c) {
   const tier = rarityTier(c.rarity);
   const dots = typeof tier === 'number' && tier > 0
@@ -897,13 +933,75 @@ function cardInfoHTML(c) {
   const chip = (txt, cls = '', style = '') => `<span class="ci-chip ${cls}"${style ? ` style="${style}"` : ''}>${esc(txt)}</span>`;
   return `<div class="card-info">
     <div class="ci-row"><span class="ci-lbl">${t('rarityLbl')}</span>
-      <span class="ci-val"><b>${esc(RARITY_SYMBOL[tier] || '')} ${esc(c.rarity || '—')}</b> <span class="muted">· ${esc(t('tiers')[tier] ?? '—')}</span> ${dots}</span></div>
+      <span class="ci-val"><b>${raritySymHTML(c.rarity)} ${esc(c.rarity || '—')}</b> <span class="muted">· ${esc(t('tiers')[tier] ?? '—')}</span> ${dots}</span></div>
     <div class="ci-row"><span class="ci-lbl">${t('cardKind')}</span>
       <span class="ci-val">${kind.map(k => chip(k)).join('')}${c.etypes.map(e => chip(e, 'energy', `background:${ENERGY_COLORS[e] || '#888'}`)).join('')}${c.hp ? chip(`HP ${c.hp}`, 'hp') : ''}</span></div>
     ${c.artist ? `<div class="ci-row"><span class="ci-lbl">${t('illus')}</span><span class="ci-val">${esc(c.artist)}</span></div>` : ''}
     ${c.reg ? `<div class="ci-row"><span class="ci-lbl">${t('regMark')}</span><span class="ci-val"><span class="reg-mark">${esc(c.reg)}</span></span></div>` : ''}
     <p class="muted small ci-note">${t('noDropRate')}</p>
   </div>`;
+}
+
+// ===== Instrukcja: jak rozpoznać typ karty i rzadkość (⚙︎) =====
+const GUIDE = {
+  pl: {
+    title: 'Jak rozpoznać typ karty i rzadkość',
+    vHead: 'Typ karty (wariant)',
+    vIntro: 'Przechyl kartę pod światło i zobacz, <b>co błyszczy</b>.',
+    variants: [
+      ['Normal', 'Nic nie błyszczy — ani ilustracja, ani reszta karty. Tak wygląda większość kart Common i Uncommon.'],
+      ['Holo', 'Błyszczy (folia, tęczowy połysk) <b>sama ilustracja</b>, reszta karty jest matowa. Karty ex, V, VMAX, VSTAR, GX oraz ilustracyjne (Illustration / Special Illustration, Hyper) mają połysk lub fakturę na całej karcie i istnieją tylko w tej jednej wersji — wybierz Holo.'],
+      ['Reverse Holo', 'Odwrotnie niż holo: <b>błyszczy cała karta</b> (ramka, tło pod tekstem), a ilustracja jest matowa. Od 2002 r. prawie każda zwykła karta (Common, Uncommon, Rare) ma też wersję reverse — jest jedna na booster.'],
+      ['Reverse Holo (Poké Ball / Master Ball)', 'Reverse z wzorem <b>Poké Balli</b> albo <b>Master Balli</b> w folii (zamiast zwykłego połysku). Tylko w zestawach 151 i Prismatic Evolutions; Master Ball jest dużo rzadszy.'],
+      ['1st Edition', 'Znaczek <b>„Edition 1”</b> w czarnym kółku po lewej stronie, pod ilustracją. Tylko stare zestawy Wizards of the Coast (1999–2002).'],
+      ['Shadowless', 'Tylko Base Set: brak <b>cienia</b> przy prawej krawędzi ramki ilustracji (późniejszy druk „Unlimited” ma wyraźny cień) i brak znaczka 1st Edition.'],
+      ['Promo / Stamped', 'Zamiast symbolu rzadkości czarna gwiazdka z napisem <b>PROMO</b> albo dodatkowy nadruk na ilustracji: logo zestawu, „Prerelease”, „Staff”, logo wydarzenia lub sklepu.'],
+      ['Inny', 'Wszystko, co nie pasuje wyżej: błędy druku, karty jumbo, inne wersje językowe itp.'],
+    ],
+    rHead: 'Rzadkość — symbol przy numerze karty',
+    rIntro: 'Symbol jest na dole karty, obok numeru (np. <b>199/165</b>). W nowych zestawach (od Scarlet & Violet) liczy się też jego kolor:',
+    rarities: [
+      ['Common', 'zwykła'], ['Uncommon', 'niezwykła'], ['Rare', 'rzadka (czarna gwiazdka)'],
+      ['Double Rare', 'karty ex (czarne gwiazdki)'], ['Illustration Rare', 'ilustracja na całą kartę (złota gwiazdka)'],
+      ['Ultra Rare', 'pełna karta ex / trener (srebrne gwiazdki)'], ['Special Illustration Rare', 'specjalna ilustracja (złote gwiazdki)'],
+      ['Hyper Rare', 'złota karta (złote gwiazdki)'], ['Shiny Rare', 'shiny Pokémon'], ['Shiny Ultra Rare', 'shiny ex'],
+      ['ACE SPEC Rare', 'karta ACE SPEC (różowa gwiazdka)'],
+    ],
+    rOld: 'Starsze karty (do Sword & Shield) mają tylko ● ◆ ★ — czarna ★ oznacza każdą rzadką kartę, także holo, V, VMAX i sekretne. <b>Karta sekretna</b> ma numer większy niż rozmiar zestawu, np. <b>201/165</b>.',
+  },
+  en: {
+    title: 'How to tell card type and rarity',
+    vHead: 'Card type (variant)',
+    vIntro: 'Tilt the card under a light and look at <b>what shines</b>.',
+    variants: [
+      ['Normal', 'Nothing shines — neither the artwork nor the rest of the card. Most Common and Uncommon cards look like this.'],
+      ['Holo', '<b>Only the artwork</b> is foil (rainbow shine); the rest of the card is matte. ex, V, VMAX, VSTAR, GX and illustration cards (Illustration / Special Illustration, Hyper) have shine or texture over the whole card and exist in this one version only — pick Holo.'],
+      ['Reverse Holo', 'The opposite of holo: <b>the whole card shines</b> (frame, text box background) while the artwork is matte. Since 2002 almost every regular card (Common, Uncommon, Rare) also has a reverse version — one per booster pack.'],
+      ['Reverse Holo (Poké Ball / Master Ball)', 'A reverse with a <b>Poké Ball</b> or <b>Master Ball</b> pattern in the foil instead of the regular shine. Only in 151 and Prismatic Evolutions; Master Ball is much rarer.'],
+      ['1st Edition', 'A black circle <b>“Edition 1”</b> stamp on the left, below the artwork. Only old Wizards of the Coast sets (1999–2002).'],
+      ['Shadowless', 'Base Set only: <b>no drop shadow</b> along the right edge of the artwork frame (the later “Unlimited” print has a clear shadow) and no 1st Edition stamp.'],
+      ['Promo / Stamped', 'A black star with <b>PROMO</b> instead of a rarity symbol, or an extra stamp on the artwork: set logo, “Prerelease”, “Staff”, an event or store logo.'],
+      ['Other', 'Anything that doesn’t fit above: misprints, jumbo cards, other languages, etc.'],
+    ],
+    rHead: 'Rarity — the symbol next to the card number',
+    rIntro: 'The symbol is at the bottom of the card, next to the number (e.g. <b>199/165</b>). In newer sets (Scarlet & Violet onwards) its colour matters too:',
+    rarities: [
+      ['Common', 'common'], ['Uncommon', 'uncommon'], ['Rare', 'rare (black star)'],
+      ['Double Rare', 'ex cards (black stars)'], ['Illustration Rare', 'full-art illustration (gold star)'],
+      ['Ultra Rare', 'full-art ex / trainer (silver stars)'], ['Special Illustration Rare', 'special illustration (gold stars)'],
+      ['Hyper Rare', 'gold card (gold stars)'], ['Shiny Rare', 'shiny Pokémon'], ['Shiny Ultra Rare', 'shiny ex'],
+      ['ACE SPEC Rare', 'ACE SPEC card (pink star)'],
+    ],
+    rOld: 'Older cards (up to Sword & Shield) only use ● ◆ ★ — a black ★ marks any rare card, including holo, V, VMAX and secret ones. A <b>secret card</b> has a number higher than the set size, e.g. <b>201/165</b>.',
+  },
+};
+function guideHTML() {
+  const g = GUIDE[LANG] || GUIDE.pl;
+  return `<h4>${g.vHead}</h4><p class="small">${g.vIntro}</p>
+    <dl class="guide-list">${g.variants.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>
+    <h4>${g.rHead}</h4><p class="small">${g.rIntro}</p>
+    <dl class="guide-list rar">${g.rarities.map(([r, d]) => `<dt>${raritySymHTML(r)} ${esc(r)}</dt><dd>${d}</dd>`).join('')}</dl>
+    <p class="small">${g.rOld}</p>`;
 }
 
 // ===== Dialog karty =====
@@ -920,7 +1018,7 @@ function openCardDialog(cardId) {
       <img class="big" src="${esc(largeImg(c.img))}" alt="${esc(c.name)}" onerror="this.onerror=null;this.src='${esc(c.img)}'">
       <div>
         <div><b>${esc(c.set.name)}</b> <span class="muted">(${esc(c.set.code || c.set.id)})</span></div>
-        <div class="meta">${t('series')}: ${esc(c.set.series)} · ${t('no')} <b>${esc(c.num)}${c.set.total ? '/' + c.set.total : ''}</b> · ${esc(c.rarity || '—')}</div>
+        <div class="meta">${t('series')}: ${esc(c.set.series)} · ${t('no')} <b>${esc(c.num)}${c.set.total ? '/' + c.set.total : ''}</b> · ${raritySymHTML(c.rarity)} ${esc(c.rarity || '—')}</div>
         <div class="meta">${t('released')}: ${esc(c.set.date || '?')} · ID: ${esc(c.id)}</div>
         ${have ? `<div class="meta" style="color:var(--ok);font-weight:700">${t('haveCopies', have)}</div>` : ''}
       </div>
@@ -928,7 +1026,7 @@ function openCardDialog(cardId) {
       <div class="price-box" id="priceBox" data-card="${esc(c.id)}"></div>
       <label class="muted small" for="variantSel">${t('variantLabel')}</label>
       <div class="add-row">
-        <select id="variantSel">${variantOptions(guess, c)}</select>
+        <select id="variantSel" onchange="this.dataset.touched=1">${variantOptions(guess, c)}</select>
         <button class="btn ok" id="dlgAdd" data-dex="${dex}" data-card="${esc(c.id)}">${have ? t('addMore') : t('addBtn')}</button>
       </div>
       ${copiesHTML(c)}
@@ -1210,6 +1308,7 @@ function syncFilterInputs() {
 function updateDataInfo() {
   const o = Object.values(S.store.owned);
   $('#dataInfo').textContent = t('dataInfo', o.length, totalOwnedCards());
+  $('#guideBody').innerHTML = guideHTML();
   $('#sourcesText').innerHTML = t('sources', S.sets.length, S.cards.length, esc(S.sets[S.sets.length - 1]?.name));
   askSwVersion();
   renderVersion();
@@ -1220,6 +1319,7 @@ let swVersion = null;
 function renderVersion() {
   $('#appVersion').textContent = t('version', APP_VERSION, APP_DATE);
   $('#aboutAuthor').innerHTML = t('aboutAuthor');
+  $('#guideTitle').textContent = (GUIDE[LANG] || GUIDE.pl).title;
   $('#donateText').textContent = t('donateText');
   $('#donateBtn').textContent = '☕ ' + t('donateBtn');
   $('#aboutLegal').textContent = t('aboutLegal');
