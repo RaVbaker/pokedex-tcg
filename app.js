@@ -763,7 +763,7 @@ function renderDetail() {
 function cardLine(c) {
   const year = c.set.date ? c.set.date.slice(0, 4) : '';
   const total = c.set.total ? '/' + c.set.total : '';
-  return `<span><span class="num">${esc(c.num)}${total}</span> · ${esc(c.rarity || '—')}${c.sub.length ? ' · ' + esc(c.sub.join(', ')) : ''}${year ? ' · ' + year : ''}</span>`;
+  return `<span><span class="num">${esc(c.num)}${total}</span> · ${raritySymHTML(c.rarity)} ${esc(c.rarity || '—')}${c.sub.length ? ' · ' + esc(c.sub.join(', ')) : ''}${year ? ' · ' + year : ''}</span>`;
 }
 // ===== Warianty karty dostępne dla konkretnej karty =====
 // 1) z zapisanych cen PokéWallet (TCGplayer zna dokładne wersje: Normal, Holofoil, Reverse Holofoil, 1st Edition…)
@@ -906,7 +906,25 @@ function rarityTier(r) {
   if (/ultra|^illustration rare|^shiny rare|ace spec|black white|futuristic|mega_attack/i.test(r)) return 5;
   return 4;
 }
-const RARITY_SYMBOL = { 1: '●', 2: '◆', 3: '★', 4: '★★', 5: '★★★', 6: '✦' };
+// symbol rzadkości tak jak nadrukowany na karcie (era Scarlet & Violet / Mega; starsze ery: ● ◆ ★)
+// col: kolor symbolu na karcie (złoty / srebrny / różowy), pokazywany tam, gdzie da się pokolorować tekst
+function raritySymbol(r) {
+  const x = String(r || '').toLowerCase().replace(/_/g, ' ');
+  if (!x) return { s: '', col: '' };
+  if (x === 'common') return { s: '●', col: '' };
+  if (x === 'uncommon') return { s: '◆', col: '' };
+  if (x === 'double rare') return { s: '★★', col: '' };
+  if (x === 'ultra rare') return { s: '★★', col: 'silver' };
+  if (x === 'illustration rare') return { s: '★', col: 'gold' };
+  if (x === 'special illustration rare') return { s: '★★', col: 'gold' };
+  if (x === 'hyper rare' || x === 'mega hyper rare') return { s: '★★★', col: 'gold' };
+  if (x === 'shiny rare') return { s: '✦', col: 'gold' };
+  if (x === 'shiny ultra rare') return { s: '✦✦', col: 'gold' };
+  if (x === 'ace spec rare') return { s: '★', col: 'pink' };
+  if (x === 'mega attack rare') return { s: '★★', col: 'silver' };
+  return { s: '★', col: '' };
+}
+const raritySymHTML = r => { const { s, col } = raritySymbol(r); return s ? `<span class="rsym${col ? ' ' + col : ''}" aria-hidden="true">${s}</span>` : ''; };
 function cardInfoHTML(c) {
   const tier = rarityTier(c.rarity);
   const dots = typeof tier === 'number' && tier > 0
@@ -915,7 +933,7 @@ function cardInfoHTML(c) {
   const chip = (txt, cls = '', style = '') => `<span class="ci-chip ${cls}"${style ? ` style="${style}"` : ''}>${esc(txt)}</span>`;
   return `<div class="card-info">
     <div class="ci-row"><span class="ci-lbl">${t('rarityLbl')}</span>
-      <span class="ci-val"><b>${esc(RARITY_SYMBOL[tier] || '')} ${esc(c.rarity || '—')}</b> <span class="muted">· ${esc(t('tiers')[tier] ?? '—')}</span> ${dots}</span></div>
+      <span class="ci-val"><b>${raritySymHTML(c.rarity)} ${esc(c.rarity || '—')}</b> <span class="muted">· ${esc(t('tiers')[tier] ?? '—')}</span> ${dots}</span></div>
     <div class="ci-row"><span class="ci-lbl">${t('cardKind')}</span>
       <span class="ci-val">${kind.map(k => chip(k)).join('')}${c.etypes.map(e => chip(e, 'energy', `background:${ENERGY_COLORS[e] || '#888'}`)).join('')}${c.hp ? chip(`HP ${c.hp}`, 'hp') : ''}</span></div>
     ${c.artist ? `<div class="ci-row"><span class="ci-lbl">${t('illus')}</span><span class="ci-val">${esc(c.artist)}</span></div>` : ''}
@@ -938,7 +956,7 @@ function openCardDialog(cardId) {
       <img class="big" src="${esc(largeImg(c.img))}" alt="${esc(c.name)}" onerror="this.onerror=null;this.src='${esc(c.img)}'">
       <div>
         <div><b>${esc(c.set.name)}</b> <span class="muted">(${esc(c.set.code || c.set.id)})</span></div>
-        <div class="meta">${t('series')}: ${esc(c.set.series)} · ${t('no')} <b>${esc(c.num)}${c.set.total ? '/' + c.set.total : ''}</b> · ${esc(c.rarity || '—')}</div>
+        <div class="meta">${t('series')}: ${esc(c.set.series)} · ${t('no')} <b>${esc(c.num)}${c.set.total ? '/' + c.set.total : ''}</b> · ${raritySymHTML(c.rarity)} ${esc(c.rarity || '—')}</div>
         <div class="meta">${t('released')}: ${esc(c.set.date || '?')} · ID: ${esc(c.id)}</div>
         ${have ? `<div class="meta" style="color:var(--ok);font-weight:700">${t('haveCopies', have)}</div>` : ''}
       </div>

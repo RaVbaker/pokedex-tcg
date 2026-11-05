@@ -177,7 +177,7 @@ function renderSetView() {
       <input class="card-filter" id="setQ" type="search" placeholder="${esc(t('setFilterPh'))}" value="${esc(SETV.q)}" autocomplete="off" enterkeyhint="search">
       <select id="setRarity" aria-label="${esc(t('rarityLbl'))}">
         <option value="">${t('allRarities')}</option>
-        ${rarities.map(r => `<option value="${esc(r)}"${r === SETV.rarity ? ' selected' : ''}>${esc(r || '—')} (${rarCount.get(r)})</option>`).join('')}
+        ${rarities.map(r => `<option value="${esc(r)}"${r === SETV.rarity ? ' selected' : ''}>${esc((raritySymbol(r).s ? raritySymbol(r).s + '  ' : '') + (r || '—'))} (${rarCount.get(r)})</option>`).join('')}
       </select>
     </div>
     <div class="summary-chips">${chip('all', t('showAll'), cards.length)}${chip('missing', t('showMissing'), cards.length - haveN)}${chip('owned', t('showOwned'), haveN)}</div>
