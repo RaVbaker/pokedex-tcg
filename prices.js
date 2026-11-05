@@ -263,6 +263,14 @@ function pickRow(rows, variant, valueOf) {
   }
   return priced[0];
 }
+// czy dany typ karty ma w zapisanych cenach dokładnie pasujący wiersz z ceną > 0 (bez zastępowania innym wariantem)
+function variantHasPrice(cardId, variant) {
+  const e = priceCache()[cardId]?.pw;
+  if (!e || !['Normal', 'Holo', 'Reverse Holo', '1st Edition'].includes(variant)) return false;
+  const { want, not } = variantRe(variant);
+  const ok = (rows, valueOf) => (rows || []).some(r => want.test(r.v || '') && !(not && not.test(r.v || '')) && valueOf(r) > 0);
+  return ok(e.cm, cmValue) || ok(e.tcg, tcgValue);
+}
 const cmValue = r => r.trend ?? r.avg ?? r.avg30 ?? r.low;
 const tcgValue = r => r.market ?? r.mid ?? r.low;
 function cardValue(cardId, variant, src = priceSource(), fallback = true) {

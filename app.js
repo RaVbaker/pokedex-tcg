@@ -7,7 +7,7 @@
 // ===== Stałe =====
 // Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
 const APP_VERSION = '17';
-const APP_DATE = '2026-11-04';
+const APP_DATE = '2026-11-05';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
 const ART = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
@@ -812,9 +812,10 @@ function availableVariants(c) {
   out.add('Other');
   return VARIANTS.filter(v => out.has(v));
 }
+// domyślny typ karty: pierwszy z góry, który ma znaną niezerową cenę (z zapisanych cen); bez cen — pierwszy z listy
 function defaultVariant(c, list = availableVariants(c)) {
-  const holoR = /holo|rare/i.test(c.rarity) && !/common|uncommon/i.test(c.rarity);
-  return holoR && list.includes('Holo') ? 'Holo' : list[0];
+  const priced = typeof variantHasPrice === 'function' ? list.find(v => variantHasPrice(c.id, v)) : null;
+  return priced || list[0];
 }
 function variantOptions(selected, card = null) {
   const list = card ? availableVariants(card) : VARIANTS;
@@ -826,7 +827,8 @@ function refreshVariantSelect(card) {
   const sel = $('#variantSel');
   if (!sel || $('#priceBox')?.dataset.card !== card.id) return;
   const list = availableVariants(card);
-  const cur = list.includes(sel.value) ? sel.value : defaultVariant(card, list);
+  // dopóki użytkownik sam nie wybrał typu, po pobraniu ceny ustaw typ z ceną
+  const cur = list.includes(sel.value) && sel.dataset.touched ? sel.value : defaultVariant(card, list);
   sel.innerHTML = variantOptions(cur, card);
 }
 function ownedSectionHTML(pk) {
@@ -944,7 +946,7 @@ function openCardDialog(cardId) {
       <div class="price-box" id="priceBox" data-card="${esc(c.id)}"></div>
       <label class="muted small" for="variantSel">${t('variantLabel')}</label>
       <div class="add-row">
-        <select id="variantSel">${variantOptions(guess, c)}</select>
+        <select id="variantSel" onchange="this.dataset.touched=1">${variantOptions(guess, c)}</select>
         <button class="btn ok" id="dlgAdd" data-dex="${dex}" data-card="${esc(c.id)}">${have ? t('addMore') : t('addBtn')}</button>
       </div>
       ${copiesHTML(c)}
