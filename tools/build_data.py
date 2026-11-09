@@ -91,6 +91,22 @@ def build_cards():
     with ThreadPoolExecutor(12) as ex:
         loaded = list(ex.map(get, sets))
 
+    # karty spoza bazy (np. promki MEP z 30th Celebration) — tools/extra_cards.json;
+    # pomijane, gdy baza ma już kartę o tym id
+    known = {c["id"] for _, cards in loaded for c in cards}
+    with open(os.path.join(ROOT, "tools", "extra_cards.json"), encoding="utf-8") as f:
+        extra = json.load(f)["cards"]
+    for s, cards in loaded:
+        for e in extra:
+            if e["set"] != s["id"] or e["id"] in known:
+                continue
+            cards.append({
+                "id": e["id"], "number": e["number"], "name": e["name"],
+                "rarity": e.get("rarity", "Promo"), "supertype": e.get("supertype", "Pokémon"),
+                "subtypes": e.get("subtypes", []), "nationalPokedexNumbers": e.get("dex", []),
+                "images": {"small": e.get("img") or f"https://images.scrydex.com/pokemon/{e['id']}/small"},
+            })
+
     rarities, subtypes, supertypes, etypes, artists = [], [], [], [], []
     def idx(lst, v):
         if v not in lst:

@@ -1,0 +1,22 @@
+{
+  "_comment": "Karty spoza pokemon-tcg-data, dopisywane przez tools/build_data.py do wskazanego zestawu. Pomijane, gdy karta o tym id pojawi się w bazie. MEP 094–110: promki Mega Evolution Black Star Promos wydane z produktami 30th Celebration (źródła: Bulbapedia „MEP Black Star Promos”, TCGCollector „Mega Evolution Promos”).",
+  "cards": [
+    { "set": "me55", "id": "mep-94",  "number": "MEP094", "name": "Alolan Exeggutor", "dex": [103], "subtypes": ["Stage 1"] },
+    { "set": "me55", "id": "mep-95",  "number": "MEP095", "name": "Lucario",          "dex": [448], "subtypes": ["Stage 1"] },
+    { "set": "me55", "id": "mep-96",  "number": "MEP096", "name": "Moltres",          "dex": [146], "subtypes": ["Basic"] },
+    { "set": "me55", "id": "mep-97",  "number": "MEP097", "name": "Articuno",         "dex": [144], "subtypes": ["Basic"] },
+    { "set": "me55", "id": "mep-98",  "number": "MEP098", "name": "Zapdos",           "dex": [145], "subtypes": ["Basic"] },
+    { "set": "me55", "id": "mep-99",  "number": "MEP099", "name": "Greninja ex",      "dex": [658], "subtypes": ["Stage 2", "ex"] },
+    { "set": "me55", "id": "mep-100", "number": "MEP100", "name": "Sylveon ex",       "dex": [700], "subtypes": ["Stage 1", "ex"] },
+    { "set": "me55", "id": "mep-101", "number": "MEP101", "name": "Nidorina",         "dex": [30],  "subtypes": ["Stage 1"] },
+    { "set": "me55", "id": "mep-102", "number": "MEP102", "name": "Victini",          "dex": [494], "subtypes": ["Basic"] },
+    { "set": "me55", "id": "mep-103", "number": "MEP103", "name": "Zeraora",          "dex": [807], "subtypes": ["Basic"] },
+    { "set": "me55", "id": "mep-104", "number": "MEP104", "name": "Mewtwo",           "dex": [150], "subtypes": ["Basic"] },
+    { "set": "me55", "id": "mep-105", "number": "MEP105", "name": "Mew",              "dex": [151], "subtypes": ["Basic"] },
+    { "set": "me55", "id": "mep-106", "number": "MEP106", "name": "Ditto",            "dex": [132], "subtypes": ["Basic"] },
+    { "set": "me55", "id": "mep-107", "number": "MEP107", "name": "Pikachu ex",       "dex": [25],  "subtypes": ["Basic", "ex"] },
+    { "set": "me55", "id": "mep-108", "number": "MEP108", "name": "Espeon ex",        "dex": [196], "subtypes": ["Stage 1", "ex"] },
+    { "set": "me55", "id": "mep-109", "number": "MEP109", "name": "Pikachu ex",       "dex": [25],  "subtypes": ["Basic", "ex"] },
+    { "set": "me55", "id": "mep-110", "number": "MEP110", "name": "Umbreon ex",       "dex": [197], "subtypes": ["Stage 1", "ex"] }
+  ]
+}
