@@ -493,10 +493,11 @@ function pwSetMeta() {
   try { return JSON.parse(localStorage.getItem(PW.setMetaLS) || '{}') || {}; } catch { return {}; }
 }
 function savePwSetMeta(m) { try { localStorage.setItem(PW.setMetaLS, JSON.stringify(m)); } catch { /* pełny storage */ } }
-async function pwSetList() {
+// maxAge: jak długo ufać zapamiętanej liście (domyślnie 7 dni; przy nieznalezionym zestawie — 1 h)
+async function pwSetList(maxAge = 7 * 24 * 3600e3) {
   try {
     const c = JSON.parse(localStorage.getItem(PW.setsLS) || 'null');
-    if (c && Date.now() - c.at < 7 * 24 * 3600e3 && Array.isArray(c.sets)) return c.sets;
+    if (c && Date.now() - c.at < maxAge && Array.isArray(c.sets)) return c.sets;
   } catch { /* brak */ }
   const body = await pwGet('/sets');
   const sets = (Array.isArray(body?.data) ? body.data : []).map(s => ({
@@ -550,7 +551,8 @@ function pwMatchOurCard(set, number, name, byNum) {
   return cands.find(c => n.includes(norm(c.name))) || cands[0];
 }
 async function fetchSetPrices(set, onProgress = () => {}) {
-  const pwSet = matchPwSet(set, await pwSetList());
+  // nowy zestaw może nie być jeszcze na zapamiętanej liście — wtedy pobierz ją ponownie (najwyżej raz na godzinę)
+  const pwSet = matchPwSet(set, await pwSetList()) || matchPwSet(set, await pwSetList(3600e3));
   const meta = pwSetMeta();
   if (!pwSet) {
     meta[set.id] = { at: Date.now(), none: true };

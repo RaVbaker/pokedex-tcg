@@ -6,7 +6,7 @@
 
 // ===== Stałe =====
 // Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
-const APP_VERSION = '18';
+const APP_VERSION = '19';
 const APP_DATE = '2026-11-09';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
@@ -54,7 +54,7 @@ const I18N = {
     topProMissing: 'Brak planu Pro — wyceniam najrzadsze karty (plan darmowy).', topMore: n => `Wyceń kolejne (${n})`, topRefreshStale: n => `Odśwież nieświeże (${n})`, topAllPriced: 'Wszystko wycenione',
     topAllFresh: 'Wszystkie karty tego zestawu z PokéWallet mają już świeże ceny.',
     topFreeNote: 'Plan darmowy: lista zestawu w PokéWallet nie zawiera cen, więc wyceniane są najrzadsze karty (po 1 zapytaniu, liczba w ⚙︎). Plan Pro wycenia cały zestaw jednym zapytaniem.', topFetch: 'Pobierz ceny zestawu', topLoading: 'Pobieram ceny zestawu…',
-    topFrom: (n, total, d) => `ceny ${n} z ${total} kart${d ? ` · ${d}` : ''}`, topNoSet: 'Nie znaleziono tego zestawu w PokéWallet.',
+    topFrom: (n, total, d) => `ceny ${n} z ${total} kart${d ? ` · ${d}` : ''}`, topNoSet: 'Nie znaleziono tego zestawu w PokéWallet. Nowe zestawy pojawiają się tam z opóźnieniem — spróbuj ponownie za kilka dni.',
     topNone: 'Brak cen dla kart z tego zestawu.', topHint: 'Kilka zapytań (wg limitu w ⚙︎) pobierze ceny wszystkich kart z zestawu (najdroższe karty i sortowanie wg wartości).',
     valueGroup: v => `Wycenione · razem ${v}`, valueHint: 'Wartość z zapisanych cen — brakujące pobierzesz w ⚙︎ → Ceny kart → „Wyceń kolekcję”.',
     clearFilters: 'Wyczyść filtry', done: 'Gotowe', loading: 'Ładowanie danych…',
@@ -181,7 +181,7 @@ const I18N = {
     topProMissing: 'No Pro plan — pricing the rarest cards (free plan).', topMore: n => `Price next (${n})`, topRefreshStale: n => `Refresh stale (${n})`, topAllPriced: 'All priced',
     topAllFresh: 'Every card of this set from PokéWallet already has fresh prices.',
     topFreeNote: 'Free plan: the PokéWallet set listing has no prices, so the rarest cards are priced (1 request each, number in ⚙︎). The Pro plan prices the whole set in one request.', topFetch: 'Fetch set prices', topLoading: 'Fetching set prices…',
-    topFrom: (n, total, d) => `prices for ${n} of ${total} cards${d ? ` · ${d}` : ''}`, topNoSet: 'This set was not found in PokéWallet.',
+    topFrom: (n, total, d) => `prices for ${n} of ${total} cards${d ? ` · ${d}` : ''}`, topNoSet: 'This set was not found in PokéWallet. New sets show up there with a delay — try again in a few days.',
     topNone: 'No prices for cards in this set.', topHint: 'A few requests (per the limit in ⚙︎) fetch prices for every card in the set (most valuable cards and value sorting).',
     valueGroup: v => `Priced · total ${v}`, valueHint: 'Value from saved prices — fetch missing ones in ⚙︎ → Card prices → “Value my collection”.',
     clearFilters: 'Clear filters', done: 'Done', loading: 'Loading data…',
