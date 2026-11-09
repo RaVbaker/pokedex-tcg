@@ -64,7 +64,7 @@ function renderWish(grid) {
       <span class="scard">
         <span class="scard-fb"><b>${esc(c.num)}</b><span>${esc(c.name)}</span></span>
         <img loading="lazy" decoding="async" alt="" src="${esc(c.img)}" onerror="this.remove()">
-        <span class="scard-no">${esc(c.num)}${c.set.total ? '/' + c.set.total : ''}</span>
+        <span class="scard-no">${esc(cardNo(c))}</span>
         ${have ? `<span class="scard-check" title="${esc(t('wishHave'))}">✓</span>` : '<span class="scard-wish" aria-hidden="true">♥</span>'}
         ${typeof priceTag === 'function' ? priceTag(c.id, w.v || null) : ''}
       </span>

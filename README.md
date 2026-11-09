@@ -48,6 +48,7 @@ Settings → Pages → Source: *Deploy from a branch* → `main` / `/ (root)`. P
 |---|---|---|
 | `data/pokemon.json` | [PokeAPI](https://github.com/PokeAPI/pokeapi) (CSV) | `[nr, nazwa, [typy], wzrost dm, waga hg, generacja]` |
 | `data/cards.json` | [pokemon-tcg-data](https://github.com/PokemonTCG/pokemon-tcg-data) | zestawy (z symbolami) + wszystkie karty: Pokémon, trenerzy, energie |
+| `tools/extra_cards.json` | ręcznie | karty, których brak w pokemon-tcg-data, dopisywane do zestawu przy budowaniu (np. promki MEP 094–110 z 30th Celebration; w widoku zestawu liczone osobno jako „+ promo”) |
 
 Obrazki stworków ładują się z [PokeAPI/sprites](https://github.com/PokeAPI/sprites), obrazki kart z `images.pokemontcg.io` / `images.scrydex.com`.
 

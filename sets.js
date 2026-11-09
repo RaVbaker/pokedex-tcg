@@ -9,8 +9,11 @@ const SETV = { id: null, show: 'all', q: '', rarity: '' };
 function setProgress(set) {
   const cards = S.cardsBySet.get(set.id) || [];
   const idx = ownedIndex();
-  let base = 0, baseHave = 0, secret = 0, secretHave = 0;
+  let base = 0, baseHave = 0, secret = 0, secretHave = 0, promo = 0, promoHave = 0;
+  // promki dołączone do zwykłego zestawu (np. MEP 094–110 przy 30th Celebration) liczone osobno
+  const promoSet = /promo/i.test(set.name);
   for (const c of cards) {
+    if (!promoSet && /^promo$/i.test(c.rarity)) { promo++; if (idx.has(c.id)) promoHave++; continue; }
     const n = parseInt(c.num, 10);
     const isBase = /^\d+$/.test(c.num) && n <= set.total;
     const have = idx.has(c.id);
@@ -18,8 +21,10 @@ function setProgress(set) {
   }
   // gdy zestaw nie ma numeracji „x/total” (promki) albo karty mają oryginalne numery z innych zestawów
   // (np. Classic Collection: 58, 101… przy rozmiarze 30), wszystko liczymy jako zwykłe
+  // zestaw złożony z samych promek (np. Best of Game) — liczymy je jako zwykłe karty
+  if (!base && !secret) { base = promo; baseHave = promoHave; promo = 0; promoHave = 0; }
   if (!base || secret > base) { base += secret; baseHave += secretHave; secret = 0; secretHave = 0; }
-  return { base, baseHave, secret, secretHave, all: cards.length, allHave: baseHave + secretHave };
+  return { base, baseHave, secret, secretHave, promo, promoHave, all: cards.length, allHave: baseHave + secretHave + promoHave };
 }
 
 function setSymbol(set) {
@@ -69,7 +74,7 @@ function renderSets(grid) {
           <small>${esc(set.code || set.id)} · ${esc((set.date || '').slice(0, 4))}${(() => { const v = valueOf(set); return v?.priced ? ` · <span class="set-value">${t('setValueShort', fmtMoney(v.sum, v.cur))}</span>` : ''; })()}</small>
           <span class="set-bar"><span style="width:${pct}%"></span></span>
         </span>
-        <span class="set-count"><b>${pr.baseHave}/${pr.base}</b>${pr.secret ? `<span class="set-secret">${t('secret', pr.secretHave, pr.secret)}</span>` : ''}${done ? `<small class="ok">✓ ${t('complete')}</small>` : `<small>${pct}%</small>`}</span>
+        <span class="set-count"><b>${pr.baseHave}/${pr.base}</b>${pr.secret ? `<span class="set-secret">${t('secret', pr.secretHave, pr.secret)}</span>` : ''}${pr.promo ? `<span class="set-secret">${t('promoCount', pr.promoHave, pr.promo)}</span>` : ''}${done ? `<small class="ok">✓ ${t('complete')}</small>` : `<small>${pct}%</small>`}</span>
       </button>`);
     }
     rows.push(`</div></section>`);
@@ -168,7 +173,7 @@ function renderSetView() {
         <h2>${setSymbol(set)} ${esc(set.name)}</h2>
         <div class="muted">${esc(set.series)} · ${esc(set.code || set.id)} · ${esc(set.date || '')}</div>
         <div class="set-bar big"><span style="width:${pct}%"></span></div>
-        <div class="set-hero-count"><b>${pr.baseHave}/${pr.base}</b> (${pct}%)${pr.secret ? `<span class="set-secret big">${t('secret', pr.secretHave, pr.secret)}</span>` : ''}</div>
+        <div class="set-hero-count"><b>${pr.baseHave}/${pr.base}</b> (${pct}%)${pr.secret ? `<span class="set-secret big">${t('secret', pr.secretHave, pr.secret)}</span>` : ''}${pr.promo ? `<span class="set-secret big">${t('promoCount', pr.promoHave, pr.promo)}</span>` : ''}</div>
         ${setValueLine(set)}
       </div>
     </div>
@@ -185,7 +190,7 @@ function renderSetView() {
     ${!list.length ? `<p class="muted">${t('noCards')}${filtered ? ` <button class="link-btn" data-set-clear>${t('clearFilter')}</button>` : ''}</p>` : ''}
     <div class="set-cards">${list.map(c => {
       const n = idx.get(c.id) || 0;
-      const secret = pr.secret > 0 && !(/^\d+$/.test(c.num) && parseInt(c.num, 10) <= set.total);
+      const secret = pr.secret > 0 && !/^promo$/i.test(c.rarity) && !(/^\d+$/.test(c.num) && parseInt(c.num, 10) <= set.total);
       return `<button class="scard${n ? ' have' : inWish(c.id) ? ' wish' : ''}" data-card="${esc(c.id)}" aria-label="${esc(c.name)} ${esc(c.num)}">
         <span class="scard-fb"><b>${esc(c.num)}</b><span>${esc(c.name)}</span></span>
         <img loading="lazy" decoding="async" alt="" src="${esc(c.img)}" onerror="this.remove()">

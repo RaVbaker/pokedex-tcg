@@ -482,7 +482,7 @@ function showResults(results) {
       const c = x.c, have = idx.get(c.id) || 0;
       return `<li class="crow${i === 0 ? ' hl' : ''}">
         <img class="thumb" loading="lazy" src="${esc(c.img)}" onerror="this.style.visibility='hidden'" alt="" data-card="${esc(c.id)}">
-        <button class="info" data-card="${esc(c.id)}"><b>${esc(c.name)}</b><span>${esc(c.set.name)} · <span class="num">${esc(c.num)}${c.set.total ? '/' + c.set.total : ''}</span>${c.hp ? ` · <span class="${x.hpOk ? 'hp-ok' : ''}">HP ${c.hp}</span>` : ''} · ${esc(c.rarity || '—')} · ${esc((c.set.date || '').slice(0, 4))}</span></button>
+        <button class="info" data-card="${esc(c.id)}"><b>${esc(c.name)}</b><span>${esc(c.set.name)} · <span class="num">${esc(cardNo(c))}</span>${c.hp ? ` · <span class="${x.hpOk ? 'hp-ok' : ''}">HP ${c.hp}</span>` : ''} · ${esc(c.rarity || '—')} · ${esc((c.set.date || '').slice(0, 4))}</span></button>
         ${have ? `<span class="have">✓${have > 1 ? have : ''}</span>` : ''}
         <button class="act" data-card="${esc(c.id)}" aria-label="${t('addCard')}">+</button>
       </li>`;

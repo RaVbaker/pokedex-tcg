@@ -6,8 +6,8 @@
 
 // ===== Stałe =====
 // Wersja aplikacji — podbijaj razem z VERSION w sw.js przy każdej zmianie plików
-const APP_VERSION = '17';
-const APP_DATE = '2026-11-05';
+const APP_VERSION = '18';
+const APP_DATE = '2026-11-09';
 const LS_KEY = 'pokedex-tcg:v1';
 const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
 const ART = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
@@ -115,7 +115,7 @@ const I18N = {
     setsStatus: (st, n, c) => `Rozpoczęte zestawy: ${st} z ${n} · ${nf(c)} ${plPlural(c, 'karta', 'karty', 'kart')}`,
     setsValue: v => `wartość ${v}`, setValueShort: v => `wartość ${v}`,
     setsAll: 'Wszystkie', setsStarted: 'Rozpoczęte', setsDone: 'Ukończone', setsNone: 'Brak zestawów.',
-    secret: (h, n) => `+ sekretne ${h}/${n}`, complete: 'Komplet!', setCards: 'Karty w zestawie',
+    secret: (h, n) => `+ sekretne ${h}/${n}`, promoCount: (h, n) => `+ promo ${h}/${n}`, complete: 'Komplet!', setCards: 'Karty w zestawie',
     setFilterPh: 'Szukaj w zestawie: nazwa lub numer…', allRarities: 'Wszystkie rzadkości', clearFilter: 'Wyczyść filtr',
     showAll: 'Wszystkie', showMissing: 'Brakuje', showOwned: 'Mam', back: 'Wstecz',
     removeOne: 'Usuń 1 egz.', cardRemoved: 'Usunięto kartę', addMore: 'Dodaj kolejny',
@@ -242,7 +242,7 @@ const I18N = {
     setsStatus: (st, n, c) => `Started sets: ${st} of ${n} · ${nf(c)} ${enPlural(c, 'card', 'cards')}`,
     setsValue: v => `value ${v}`, setValueShort: v => `value ${v}`,
     setsAll: 'All', setsStarted: 'Started', setsDone: 'Completed', setsNone: 'No sets.',
-    secret: (h, n) => `+ secret ${h}/${n}`, complete: 'Complete!', setCards: 'Cards in set',
+    secret: (h, n) => `+ secret ${h}/${n}`, promoCount: (h, n) => `+ promo ${h}/${n}`, complete: 'Complete!', setCards: 'Cards in set',
     setFilterPh: 'Search this set: name or number…', allRarities: 'All rarities', clearFilter: 'Clear filter',
     showAll: 'All', showMissing: 'Missing', showOwned: 'Owned', back: 'Back',
     removeOne: 'Remove 1 copy', cardRemoved: 'Card removed', addMore: 'Add another',
@@ -311,6 +311,8 @@ const $ = sel => document.querySelector(sel);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[♀]/g, ' f').replace(/[♂]/g, ' m');
 const normNum = s => String(s).trim().toLowerCase().replace(/^([a-z]*)0+(?=\d)/, '$1');
+// numer karty z rozmiarem zestawu („25/165”); promki dołączone do zestawu (np. MEP107) bez „/rozmiar”
+const cardNo = c => c.num + (c.set.total && !(/^promo$/i.test(c.rarity) && /[a-z]/i.test(c.num)) ? '/' + c.set.total : '');
 const pad = n => '#' + String(n).padStart(4, '0');
 const fmt1 = v => (v / 10).toLocaleString(LANG === 'pl' ? 'pl-PL' : 'en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
@@ -762,7 +764,7 @@ function renderDetail() {
 
 function cardLine(c) {
   const year = c.set.date ? c.set.date.slice(0, 4) : '';
-  const total = c.set.total ? '/' + c.set.total : '';
+  const total = cardNo(c).slice(c.num.length);
   return `<span><span class="num">${esc(c.num)}${total}</span> · ${raritySymHTML(c.rarity)} ${esc(c.rarity || '—')}${c.sub.length ? ' · ' + esc(c.sub.join(', ')) : ''}${year ? ' · ' + year : ''}</span>`;
 }
 // ===== Warianty karty dostępne dla konkretnej karty =====
@@ -1018,7 +1020,7 @@ function openCardDialog(cardId) {
       <img class="big" src="${esc(largeImg(c.img))}" alt="${esc(c.name)}" onerror="this.onerror=null;this.src='${esc(c.img)}'">
       <div>
         <div><b>${esc(c.set.name)}</b> <span class="muted">(${esc(c.set.code || c.set.id)})</span></div>
-        <div class="meta">${t('series')}: ${esc(c.set.series)} · ${t('no')} <b>${esc(c.num)}${c.set.total ? '/' + c.set.total : ''}</b> · ${raritySymHTML(c.rarity)} ${esc(c.rarity || '—')}</div>
+        <div class="meta">${t('series')}: ${esc(c.set.series)} · ${t('no')} <b>${esc(cardNo(c))}</b> · ${raritySymHTML(c.rarity)} ${esc(c.rarity || '—')}</div>
         <div class="meta">${t('released')}: ${esc(c.set.date || '?')} · ID: ${esc(c.id)}</div>
         ${have ? `<div class="meta" style="color:var(--ok);font-weight:700">${t('haveCopies', have)}</div>` : ''}
       </div>
